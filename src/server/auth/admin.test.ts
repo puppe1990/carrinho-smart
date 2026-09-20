@@ -55,6 +55,12 @@ describe('admin allowlist', () => {
     expect(adminEmails()).toEqual([])
     expect(isAdminEmail('admin@example.com')).toBe(false)
   })
+
+  it('mantém a allowlist funcional com e-mails duplicados', () => {
+    process.env.ADMIN_EMAILS = 'admin@example.com,admin@example.com'
+    expect(isAdminEmail('admin@example.com')).toBe(true)
+    expect(isAdminEmail('outro@example.com')).toBe(false)
+  })
 })
 
 describe('admin session guards', () => {

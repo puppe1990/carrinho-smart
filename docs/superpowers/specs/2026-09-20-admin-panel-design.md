@@ -59,7 +59,7 @@ Segue o padrão em camadas já existente:
 - `getAdminSession(): Promise<{ user: AuthUser; isAdmin: boolean }>` — usa
   `getCurrentUser()` para o `beforeLoad` da rota.
 - `requireAdmin(): Promise<AuthContext>` — chama `requireSession()` e valida
-  `isAdminEmail(user.email)`; se falhar, lança `Error('FORBIDDEN')`.
+  `isAdminEmail(user.email)`; se falhar, lança `Error('FORBIDDEN_ADMIN')`.
 
 Sem alteração de schema. A autorização é decidida apenas pelo e-mail da sessão.
 
@@ -199,7 +199,7 @@ totalSpentCents }`.
 
 ## Tratamento de erros
 
-- Não-admin: `FORBIDDEN` no server fn e `redirect` no `beforeLoad`.
+- Não-admin: `FORBIDDEN_ADMIN` no server fn e `redirect` no `beforeLoad`.
 - Validação: mensagens específicas por campo (nome obrigatório, preço inválido, EAN
   inválido/duplicado, categoria inexistente).
 - Exclusão bloqueada: mensagem com a contagem de referências.
