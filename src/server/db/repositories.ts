@@ -3,6 +3,8 @@ import { cartSummary, type CartSummary } from '../../domain/cart'
 import type { CartLine, ListItem, Purchase, Unit } from '../../domain/types'
 import { listProgress, type ListProgress } from '../../domain/shopping-list'
 import type {
+  AdminCategoryRecord,
+  AdminStoreRecord,
   Cart,
   Category,
   NewCartLine,
@@ -123,6 +125,20 @@ function toPriceEntry(row: any): PriceEntry {
   }
 }
 
+function toAdminCategoryRecord(row: any): AdminCategoryRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    icon: row.icon,
+    color: row.color,
+    productCount: row.product_count,
+  }
+}
+
+function toAdminStoreRecord(row: any): AdminStoreRecord {
+  return { id: row.id, name: row.name, city: row.city, usageCount: row.usage_count }
+}
+
 export function createRepository(db: Database) {
   const categories = {
     upsert(category: { id: string; name: string; icon?: string; color?: string }): Category {
@@ -136,6 +152,56 @@ export function createRepository(db: Database) {
         color: category.color ?? 'primary',
       })
       return categories.get(category.id)!
+    },
+    insert(category: { id: string; name: string; icon?: string; color?: string }): Category {
+      db.prepare(
+        'INSERT INTO categories (id, name, icon, color) VALUES (@id, @name, @icon, @color)',
+      ).run({
+        id: category.id,
+        name: category.name,
+        icon: category.icon ?? 'category',
+        color: category.color ?? 'primary',
+      })
+      return categories.get(category.id)!
+    },
+    update(id: string, changes: { name?: string; icon?: string; color?: string }): Category | null {
+      const current = categories.get(id)
+      if (!current) return null
+      db.prepare('UPDATE categories SET name = ?, icon = ?, color = ? WHERE id = ?').run(
+        changes.name ?? current.name,
+        changes.icon ?? current.icon,
+        changes.color ?? current.color,
+        id,
+      )
+      return categories.get(id)
+    },
+    remove(id: string): void {
+      db.prepare('DELETE FROM categories WHERE id = ?').run(id)
+    },
+    countProducts(id: string): number {
+      const row = db
+        .prepare('SELECT COUNT(*) AS total FROM products WHERE category_id = ?')
+        .get(id) as { total: number }
+      return row.total
+    },
+    adminGet(id: string): AdminCategoryRecord | null {
+      const row = db
+        .prepare(
+          `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count
+           FROM categories c WHERE c.id = ?`,
+        )
+        .get(id) as any
+      return row ? toAdminCategoryRecord(row) : null
+    },
+    adminList(): AdminCategoryRecord[] {
+      return (
+        db
+          .prepare(
+            `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count
+             FROM categories c ORDER BY c.name`,
+          )
+          .all() as any[]
+      ).map(toAdminCategoryRecord)
     },
     get(id: string): Category | null {
       const row = db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as any
@@ -171,6 +237,55 @@ export function createRepository(db: Database) {
         name: row.name,
         city: row.city,
       }))
+    },
+    update(id: string, changes: { name?: string; city?: string | null }): Store | null {
+      const current = stores.get(id)
+      if (!current) return null
+      db.prepare('UPDATE stores SET name = ?, city = ? WHERE id = ?').run(
+        changes.name ?? current.name,
+        changes.city === undefined ? current.city : changes.city,
+        id,
+      )
+      return stores.get(id)
+    },
+    remove(id: string): void {
+      db.prepare('DELETE FROM stores WHERE id = ?').run(id)
+    },
+    countUsage(id: string): number {
+      const row = db
+        .prepare(
+          `SELECT
+            (SELECT COUNT(*) FROM carts WHERE store_id = ?) +
+            (SELECT COUNT(*) FROM purchases WHERE store_id = ?) +
+            (SELECT COUNT(*) FROM price_history WHERE store_id = ?) AS total`,
+        )
+        .get(id, id, id) as { total: number }
+      return row.total
+    },
+    adminGet(id: string): AdminStoreRecord | null {
+      const row = db
+        .prepare(
+          `SELECT s.*,
+            (SELECT COUNT(*) FROM carts WHERE store_id = s.id) +
+            (SELECT COUNT(*) FROM purchases WHERE store_id = s.id) +
+            (SELECT COUNT(*) FROM price_history WHERE store_id = s.id) AS usage_count
+           FROM stores s WHERE s.id = ?`,
+        )
+        .get(id) as any
+      return row ? toAdminStoreRecord(row) : null
+    },
+    adminList(): AdminStoreRecord[] {
+      return (
+        db
+          .prepare(
+            `SELECT s.*,
+              (SELECT COUNT(*) FROM carts WHERE store_id = s.id) +
+              (SELECT COUNT(*) FROM purchases WHERE store_id = s.id) +
+              (SELECT COUNT(*) FROM price_history WHERE store_id = s.id) AS usage_count
+             FROM stores s ORDER BY s.name`,
+          )
+          .all() as any[]
+      ).map(toAdminStoreRecord)
     },
   }
 

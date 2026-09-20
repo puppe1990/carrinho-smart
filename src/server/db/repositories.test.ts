@@ -352,3 +352,50 @@ describe('price history repository', () => {
     expect(repo.priceHistory.lastForProduct(OTHER_USER, 'prod-1')).toBeNull()
   })
 })
+
+describe('category repository (admin)', () => {
+  it('cria, atualiza e remove categorias', () => {
+    repo.categories.insert({
+      id: 'bebidas',
+      name: 'Bebidas',
+      icon: 'local_drink',
+      color: 'primary',
+    })
+    expect(repo.categories.adminGet('bebidas')?.name).toBe('Bebidas')
+
+    repo.categories.update('bebidas', { name: 'Bebidas e Sucos' })
+    expect(repo.categories.get('bebidas')?.name).toBe('Bebidas e Sucos')
+
+    repo.categories.remove('bebidas')
+    expect(repo.categories.get('bebidas')).toBeNull()
+  })
+
+  it('conta produtos por categoria', () => {
+    seedProduct()
+    expect(repo.categories.adminGet('mercearia')?.productCount).toBe(1)
+    expect(repo.categories.adminGet('laticinios')?.productCount).toBe(0)
+  })
+})
+
+describe('store repository (admin)', () => {
+  it('atualiza nome e cidade', () => {
+    repo.stores.update('store-1', { name: 'Mercado Novo', city: 'Campinas' })
+    expect(repo.stores.get('store-1')).toEqual({
+      id: 'store-1',
+      name: 'Mercado Novo',
+      city: 'Campinas',
+    })
+  })
+
+  it('conta uso em carrinhos, compras e histórico', () => {
+    repo.carts.getOrCreateActive({ userId: USER, storeId: 'store-1', budgetCents: 1000 })
+    expect(repo.stores.countUsage('store-1')).toBe(1)
+    expect(repo.stores.adminGet('store-1')?.usageCount).toBe(1)
+  })
+
+  it('remove lojas sem uso', () => {
+    repo.stores.insert({ id: 'store-2', name: 'Sem uso', city: null })
+    repo.stores.remove('store-2')
+    expect(repo.stores.get('store-2')).toBeNull()
+  })
+})
