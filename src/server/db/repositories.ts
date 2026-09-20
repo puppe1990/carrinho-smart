@@ -4,6 +4,7 @@ import type { CartLine, ListItem, Purchase, Unit } from '../../domain/types'
 import { listProgress, type ListProgress } from '../../domain/shopping-list'
 import type {
   AdminCategoryRecord,
+  AdminProductRecord,
   AdminStoreRecord,
   Cart,
   Category,
@@ -138,6 +139,40 @@ function toAdminCategoryRecord(row: any): AdminCategoryRecord {
 
 function toAdminStoreRecord(row: any): AdminStoreRecord {
   return { id: row.id, name: row.name, city: row.city, usageCount: row.usage_count }
+}
+
+function toAdminProductRecord(row: any): AdminProductRecord {
+  return {
+    id: row.id,
+    barcode: row.barcode,
+    name: row.name,
+    brand: row.brand,
+    categoryId: row.category_id,
+    categoryName: row.category_name ?? '',
+    unit: row.unit as Unit,
+    priceCents: row.price_cents,
+    imageUrl: row.image_url,
+    aisle: row.aisle,
+    usageCount: row.usage_count,
+  }
+}
+
+function productFilter(filter: { search?: string; categoryId?: string }): {
+  clause: string
+  params: unknown[]
+} {
+  const conditions: string[] = []
+  const params: unknown[] = []
+  if (filter.search) {
+    conditions.push("(lower(p.name) LIKE ? OR lower(coalesce(p.brand, '')) LIKE ?)")
+    const term = `%${filter.search.toLowerCase()}%`
+    params.push(term, term)
+  }
+  if (filter.categoryId) {
+    conditions.push('p.category_id = ?')
+    params.push(filter.categoryId)
+  }
+  return { clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '', params }
 }
 
 export function createRepository(db: Database) {
@@ -342,6 +377,97 @@ export function createRepository(db: Database) {
     },
     list(): Product[] {
       return (db.prepare('SELECT * FROM products ORDER BY name').all() as any[]).map(toProduct)
+    },
+    update(
+      id: string,
+      changes: {
+        barcode?: string
+        name?: string
+        brand?: string | null
+        categoryId?: string
+        unit?: Unit
+        priceCents?: number
+        imageUrl?: string | null
+        aisle?: string | null
+      },
+    ): Product | null {
+      const current = products.get(id)
+      if (!current) return null
+      db.prepare(
+        `UPDATE products
+           SET barcode = @barcode, name = @name, brand = @brand, category_id = @categoryId,
+               unit = @unit, price_cents = @priceCents, image_url = @imageUrl, aisle = @aisle
+         WHERE id = @id`,
+      ).run({
+        id,
+        barcode: changes.barcode ?? current.barcode,
+        name: changes.name ?? current.name,
+        brand: changes.brand === undefined ? current.brand : changes.brand,
+        categoryId: changes.categoryId ?? current.categoryId,
+        unit: changes.unit ?? current.unit,
+        priceCents: changes.priceCents ?? current.priceCents,
+        imageUrl: changes.imageUrl === undefined ? current.imageUrl : changes.imageUrl,
+        aisle: changes.aisle === undefined ? current.aisle : changes.aisle,
+      })
+      return products.get(id)
+    },
+    remove(id: string): void {
+      db.prepare('DELETE FROM products WHERE id = ?').run(id)
+    },
+    countUsage(id: string): number {
+      const row = db
+        .prepare(
+          `SELECT
+            (SELECT COUNT(*) FROM cart_items WHERE product_id = ?) +
+            (SELECT COUNT(*) FROM list_items WHERE product_id = ?) +
+            (SELECT COUNT(*) FROM purchase_items WHERE product_id = ?) +
+            (SELECT COUNT(*) FROM price_history WHERE product_id = ?) AS total`,
+        )
+        .get(id, id, id, id) as { total: number }
+      return row.total
+    },
+    adminGet(id: string): AdminProductRecord | null {
+      const row = db
+        .prepare(
+          `SELECT p.*, c.name AS category_name,
+            (SELECT COUNT(*) FROM cart_items WHERE product_id = p.id) +
+            (SELECT COUNT(*) FROM list_items WHERE product_id = p.id) +
+            (SELECT COUNT(*) FROM purchase_items WHERE product_id = p.id) +
+            (SELECT COUNT(*) FROM price_history WHERE product_id = p.id) AS usage_count
+           FROM products p LEFT JOIN categories c ON c.id = p.category_id
+           WHERE p.id = ?`,
+        )
+        .get(id) as any
+      return row ? toAdminProductRecord(row) : null
+    },
+    adminList(filter: {
+      search?: string
+      categoryId?: string
+      limit?: number
+      offset?: number
+    }): AdminProductRecord[] {
+      const { clause, params } = productFilter(filter)
+      return (
+        db
+          .prepare(
+            `SELECT p.*, c.name AS category_name,
+              (SELECT COUNT(*) FROM cart_items WHERE product_id = p.id) +
+              (SELECT COUNT(*) FROM list_items WHERE product_id = p.id) +
+              (SELECT COUNT(*) FROM purchase_items WHERE product_id = p.id) +
+              (SELECT COUNT(*) FROM price_history WHERE product_id = p.id) AS usage_count
+             FROM products p LEFT JOIN categories c ON c.id = p.category_id
+             ${clause}
+             ORDER BY p.name LIMIT ? OFFSET ?`,
+          )
+          .all(...params, filter.limit ?? 50, filter.offset ?? 0) as any[]
+      ).map(toAdminProductRecord)
+    },
+    adminCount(filter: { search?: string; categoryId?: string }): number {
+      const { clause, params } = productFilter(filter)
+      const row = db
+        .prepare(`SELECT COUNT(*) AS total FROM products p ${clause}`)
+        .get(...params) as { total: number }
+      return row.total
     },
   }
 

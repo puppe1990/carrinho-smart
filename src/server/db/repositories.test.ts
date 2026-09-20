@@ -437,3 +437,42 @@ describe('store repository (admin)', () => {
     expect(repo.stores.get('store-2')).toBeNull()
   })
 })
+
+describe('product repository (admin)', () => {
+  it('atualiza campos do produto', () => {
+    seedProduct()
+    repo.products.update('prod-1', { name: 'Café Premium', priceCents: 2590 })
+    expect(repo.products.get('prod-1')?.name).toBe('Café Premium')
+    expect(repo.products.get('prod-1')?.priceCents).toBe(2590)
+  })
+
+  it('conta uso do produto em itens e histórico', () => {
+    seedProduct()
+    const cart = repo.carts.getOrCreateActive({ userId: USER, storeId: 'store-1' })
+    repo.carts.addLine(cart.id, {
+      productId: 'prod-1',
+      name: 'Café',
+      categoryId: 'mercearia',
+      unitPriceCents: 1000,
+    })
+    expect(repo.products.countUsage('prod-1')).toBe(1)
+    expect(repo.products.adminGet('prod-1')?.usageCount).toBe(1)
+  })
+
+  it('lista e filtra produtos com nome da categoria', () => {
+    seedProduct()
+    seedProduct({ id: 'prod-2', barcode: '7891000244103', name: 'Leite', brand: 'Nestlé' })
+    const all = repo.products.adminList({})
+    expect(all).toHaveLength(2)
+    expect(all[0]?.categoryName).toBeTruthy()
+    expect(repo.products.adminList({ search: 'leite' }).map((p) => p.id)).toEqual(['prod-2'])
+    expect(repo.products.adminList({ categoryId: 'laticinios' })).toHaveLength(0)
+    expect(repo.products.adminCount({ search: 'leite' })).toBe(1)
+  })
+
+  it('remove produto sem uso', () => {
+    seedProduct()
+    repo.products.remove('prod-1')
+    expect(repo.products.get('prod-1')).toBeNull()
+  })
+})
