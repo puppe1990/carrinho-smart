@@ -405,20 +405,26 @@ describe('admin overview', () => {
     createStore(repo, { name: 'Mercado A' })
     createCategory(repo, { name: 'Bebidas' })
     createProduct(repo, { name: 'Café', categoryId: 'mercearia' })
-    repo.purchases.create({
-      userId: 'u1',
-      storeId: 'store-1',
-      budgetCents: 10000,
-      totalCents: 4200,
-      savingsCents: 100,
-      itemCount: 2,
-      purchasedAt: '2026-09-01T10:00:00.000Z',
-    })
+    for (let index = 1; index <= 9; index += 1) {
+      repo.purchases.create({
+        userId: 'u1',
+        storeId: 'store-1',
+        budgetCents: 10000,
+        totalCents: 1000 * index,
+        savingsCents: 0,
+        itemCount: 1,
+        purchasedAt: `2026-09-0${index}T10:00:00.000Z`,
+      })
+    }
     const overview = getOverview(repo)
     expect(overview.counts.users).toBe(1)
+    expect(overview.counts.stores).toBe(2)
     expect(overview.counts.products).toBe(1)
-    expect(overview.counts.purchases).toBe(1)
-    expect(overview.gmvCents).toBe(4200)
+    expect(overview.counts.categories).toBe(2)
+    expect(overview.counts.purchases).toBe(9)
+    expect(overview.gmvCents).toBe(45000)
+    expect(overview.recentPurchases).toHaveLength(8)
+    expect(overview.recentPurchases[0]?.totalCents).toBe(9000)
     expect(overview.recentPurchases[0]?.userName).toBe('Ana')
   })
 })
@@ -432,8 +438,9 @@ describe('admin users', () => {
     expect(page.items.map((u) => u.id)).toEqual(['u2'])
   })
 
-  it('retorna detalhe com listas, carrinhos e compras', () => {
+  it('retorna detalhe com listas, carrinhos e compras do usuário', () => {
     seedUser('u1', 'Ana', 'ana@x.dev')
+    seedUser('u2', 'Bruno', 'bruno@x.dev')
     repo.lists.create({ userId: 'u1', name: 'Semana', shoppingDate: '2026-09-01' })
     repo.carts.getOrCreateActive({ userId: 'u1', storeId: 'store-1' })
     repo.purchases.create({
@@ -445,11 +452,22 @@ describe('admin users', () => {
       itemCount: 1,
       purchasedAt: '2026-09-01T10:00:00.000Z',
     })
+    repo.purchases.create({
+      userId: 'u2',
+      storeId: 'store-1',
+      budgetCents: 10000,
+      totalCents: 9900,
+      savingsCents: 0,
+      itemCount: 5,
+      purchasedAt: '2026-09-02T10:00:00.000Z',
+    })
+
     const detail = getUserDetail(repo, 'u1')
     expect(detail.user.email).toBe('ana@x.dev')
     expect(detail.lists).toHaveLength(1)
     expect(detail.carts).toHaveLength(1)
     expect(detail.purchases).toHaveLength(1)
+    expect(detail.purchases[0]?.totalCents).toBe(4200)
   })
 
   it('falha para usuário inexistente', () => {
