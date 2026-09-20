@@ -3,11 +3,12 @@ import type { Repository } from '../db/repositories'
 import { uniqueSlug } from '../db/slug'
 
 const COLORS = ['primary', 'secondary', 'tertiary', 'outline']
+const MAX_NAME = 120
 
 function requireName(value: string | undefined, label: string): string {
   const name = (value ?? '').trim()
   if (!name) throw new Error(`${label} é obrigatório.`)
-  if (name.length > 120) throw new Error(`${label} deve ter no máximo 120 caracteres.`)
+  if (name.length > MAX_NAME) throw new Error(`${label} deve ter no máximo ${MAX_NAME} caracteres.`)
   return name
 }
 
@@ -42,7 +43,10 @@ export function updateStore(repo: Repository, id: string, input: StoreInput): Ad
   const current = repo.stores.get(id)
   if (!current) throw new Error('Loja não encontrada.')
   const name = requireName(input.name, 'Nome da loja')
-  repo.stores.update(id, { name, city: optional(input.city) })
+  repo.stores.update(id, {
+    name,
+    city: input.city === undefined ? current.city : optional(input.city),
+  })
   return repo.stores.adminGet(id)!
 }
 
@@ -87,8 +91,8 @@ export function updateCategory(
   if (!current) throw new Error('Categoria não encontrada.')
   repo.categories.update(id, {
     name: requireName(input.name, 'Nome da categoria'),
-    icon: optional(input.icon) ?? 'category',
-    color: resolveColor(input.color),
+    icon: input.icon === undefined ? current.icon : (optional(input.icon) ?? 'category'),
+    color: input.color === undefined ? current.color : resolveColor(input.color),
   })
   return repo.categories.adminGet(id)!
 }

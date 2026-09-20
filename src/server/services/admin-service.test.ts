@@ -46,9 +46,34 @@ describe('admin stores', () => {
     expect(() => createStore(repo, { name: '   ' })).toThrow('Nome da loja é obrigatório.')
   })
 
+  it('normaliza cidade vazia para null', () => {
+    const store = createStore(repo, { name: 'Sem cidade', city: '   ' })
+    expect(store.city).toBeNull()
+  })
+
   it('atualiza loja existente', () => {
     updateStore(repo, 'store-1', { name: 'Mercado Novo', city: 'Santos' })
     expect(repo.stores.get('store-1')).toMatchObject({ name: 'Mercado Novo', city: 'Santos' })
+  })
+
+  it('rejeita atualização de loja inexistente', () => {
+    expect(() => updateStore(repo, 'nao-existe', { name: 'X' })).toThrow('Loja não encontrada.')
+  })
+
+  it('preserva a cidade quando ela não é informada na atualização', () => {
+    updateStore(repo, 'store-1', { name: 'Mercado Novo' })
+    expect(repo.stores.get('store-1')).toMatchObject({ name: 'Mercado Novo', city: 'São Paulo' })
+  })
+
+  it('limpa a cidade quando null é informado na atualização', () => {
+    updateStore(repo, 'store-1', { name: 'Mercado Novo', city: null })
+    expect(repo.stores.get('store-1')?.city).toBeNull()
+  })
+
+  it('rejeita nome acima de 120 caracteres', () => {
+    expect(() => createStore(repo, { name: 'a'.repeat(121) })).toThrow(
+      'Nome da loja deve ter no máximo 120 caracteres.',
+    )
   })
 
   it('bloqueia exclusão de loja em uso', () => {
@@ -89,6 +114,40 @@ describe('admin categories', () => {
       name: 'Mercearia Seca',
       icon: 'rice_bowl',
     })
+  })
+
+  it('rejeita atualização de categoria inexistente', () => {
+    expect(() => updateCategory(repo, 'nao-existe', { name: 'X' })).toThrow(
+      'Categoria não encontrada.',
+    )
+  })
+
+  it('rejeita exclusão de categoria inexistente', () => {
+    expect(() => deleteCategory(repo, 'nao-existe')).toThrow('Categoria não encontrada.')
+  })
+
+  it('preserva ícone e cor quando não informados na atualização', () => {
+    updateCategory(repo, 'mercearia', { name: 'Mercearia Seca' })
+    expect(repo.categories.get('mercearia')).toMatchObject({
+      name: 'Mercearia Seca',
+      icon: 'local_cafe',
+      color: 'primary',
+    })
+  })
+
+  it('rejeita cor inválida na atualização', () => {
+    expect(() => updateCategory(repo, 'mercearia', { name: 'X', color: 'rosa' })).toThrow(
+      'Cor da categoria inválida.',
+    )
+  })
+
+  it('bloqueia exclusão de categoria usada apenas por item de lista', () => {
+    repo.lists.create({ userId: 'u1', name: 'Semana', shoppingDate: '2026-09-01' })
+    const list = repo.lists.getActive('u1')!
+    repo.lists.addItem(list.id, { name: 'Item avulso', categoryId: 'mercearia' })
+    expect(() => deleteCategory(repo, 'mercearia')).toThrow(
+      'Não é possível excluir: 1 registro(s) usam esta categoria.',
+    )
   })
 
   it('bloqueia exclusão de categoria com produtos', () => {
