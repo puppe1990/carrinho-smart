@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { formatBRL } from '../domain/money'
 import {
@@ -38,16 +38,21 @@ function AdminUsersPage() {
   const navigate = Route.useNavigate()
   const [query, setQuery] = useState(search.q ?? '')
   const debouncedQuery = useDebouncedValue(query)
+  const lastDebounced = useRef(debouncedQuery)
 
   useEffect(() => {
-    const current = search.q ?? ''
-    if (debouncedQuery === current) return
+    const urlValue = search.q ?? ''
+    setQuery((current) => (current === urlValue ? current : urlValue))
+  }, [search.q])
+
+  useEffect(() => {
+    if (debouncedQuery === lastDebounced.current) return
+    lastDebounced.current = debouncedQuery
+    const next = debouncedQuery || undefined
+    if ((search.q ?? '') === (next ?? '')) return
     navigate({
-      search: (prev: UserSearch) => ({
-        ...prev,
-        q: debouncedQuery || undefined,
-        pagina: undefined,
-      }),
+      replace: true,
+      search: (prev: UserSearch) => ({ ...prev, q: next, pagina: undefined }),
     })
   }, [debouncedQuery, search.q, navigate])
 

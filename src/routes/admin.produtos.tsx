@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { formatBRL, parseBRL } from '../domain/money'
 import type { AdminProductRecord } from '../server/db/models'
@@ -75,20 +75,25 @@ function AdminProductsPage() {
   const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState(search.q ?? '')
   const debouncedQuery = useDebouncedValue(query)
+  const lastDebounced = useRef(debouncedQuery)
 
   function setParam(next: Partial<ProductSearch>) {
     navigate({ search: (prev: ProductSearch) => ({ ...prev, ...next }) })
   }
 
   useEffect(() => {
-    const current = search.q ?? ''
-    if (debouncedQuery === current) return
+    const urlValue = search.q ?? ''
+    setQuery((current) => (current === urlValue ? current : urlValue))
+  }, [search.q])
+
+  useEffect(() => {
+    if (debouncedQuery === lastDebounced.current) return
+    lastDebounced.current = debouncedQuery
+    const next = debouncedQuery || undefined
+    if ((search.q ?? '') === (next ?? '')) return
     navigate({
-      search: (prev: ProductSearch) => ({
-        ...prev,
-        q: debouncedQuery || undefined,
-        pagina: undefined,
-      }),
+      replace: true,
+      search: (prev: ProductSearch) => ({ ...prev, q: next, pagina: undefined }),
     })
   }, [debouncedQuery, search.q, navigate])
 
