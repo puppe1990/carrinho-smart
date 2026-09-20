@@ -575,6 +575,21 @@ describe('user repository (admin)', () => {
     expect(repo.users.get('u1')?.name).toBe('Ana')
     expect(repo.users.get('missing')).toBeNull()
   })
+
+  it('pagina de forma estável quando createdAt empata', () => {
+    for (const id of ['u1', 'u2', 'u3']) {
+      db.prepare('INSERT INTO "user" (id, name, email, createdAt) VALUES (?, ?, ?, ?)').run(
+        id,
+        id,
+        `${id}@x.dev`,
+        '2026-09-01T10:00:00.000Z',
+      )
+    }
+    const first = repo.users.list({ limit: 2, offset: 0 }).map((u) => u.id)
+    const second = repo.users.list({ limit: 2, offset: 2 }).map((u) => u.id)
+    expect(first).toEqual(['u3', 'u2'])
+    expect(second).toEqual(['u1'])
+  })
 })
 
 describe('purchases repository (admin)', () => {
