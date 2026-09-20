@@ -375,6 +375,13 @@ describe('category repository (admin)', () => {
     expect(repo.categories.adminGet('mercearia')?.productCount).toBe(1)
     expect(repo.categories.adminGet('laticinios')?.productCount).toBe(0)
   })
+
+  it('conta itens de lista que usam a categoria', () => {
+    repo.lists.create({ userId: USER, name: 'Semana', shoppingDate: '2026-09-01' })
+    const list = repo.lists.getActive(USER)!
+    repo.lists.addItem(list.id, { name: 'Item avulso', categoryId: 'laticinios' })
+    expect(repo.categories.countProducts('laticinios')).toBe(1)
+  })
 })
 
 describe('store repository (admin)', () => {
@@ -387,10 +394,32 @@ describe('store repository (admin)', () => {
     })
   })
 
+  it('preserva a cidade quando ela é omitida', () => {
+    repo.stores.update('store-1', { name: 'Mercado Novo' })
+    expect(repo.stores.get('store-1')?.city).toBe('São Paulo')
+  })
+
+  it('limpa a cidade quando null é informado', () => {
+    repo.stores.update('store-1', { city: null })
+    expect(repo.stores.get('store-1')?.city).toBeNull()
+  })
+
   it('conta uso em carrinhos, compras e histórico', () => {
-    repo.carts.getOrCreateActive({ userId: USER, storeId: 'store-1', budgetCents: 1000 })
-    expect(repo.stores.countUsage('store-1')).toBe(1)
-    expect(repo.stores.adminGet('store-1')?.usageCount).toBe(1)
+    seedProduct()
+    const cart = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 1000,
+    })
+    repo.carts.addLine(cart.id, {
+      productId: 'prod-1',
+      name: 'Café',
+      categoryId: 'mercearia',
+      unitPriceCents: 1000,
+    })
+    repo.carts.checkout(cart.id)
+    expect(repo.stores.countUsage('store-1')).toBe(3)
+    expect(repo.stores.adminGet('store-1')?.usageCount).toBe(3)
   })
 
   it('remove lojas sem uso', () => {

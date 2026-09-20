@@ -180,8 +180,12 @@ export function createRepository(db: Database) {
     },
     countProducts(id: string): number {
       const row = db
-        .prepare('SELECT COUNT(*) AS total FROM products WHERE category_id = ?')
-        .get(id) as { total: number }
+        .prepare(
+          `SELECT
+            (SELECT COUNT(*) FROM products WHERE category_id = ?) +
+            (SELECT COUNT(*) FROM list_items WHERE category_id = ?) AS total`,
+        )
+        .get(id, id) as { total: number }
       return row.total
     },
     adminGet(id: string): AdminCategoryRecord | null {
