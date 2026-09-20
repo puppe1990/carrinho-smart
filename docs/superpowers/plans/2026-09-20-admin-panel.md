@@ -1385,10 +1385,10 @@ describe('admin products', () => {
   it('aceita EAN-13 válido e rejeita inválido', () => {
     const valid = createProduct(repo, {
       name: 'Leite',
-      barcode: '7891000244102',
+      barcode: '7891000244104',
       categoryId: 'mercearia',
     })
-    expect(valid.barcode).toBe('7891000244102')
+    expect(valid.barcode).toBe('7891000244104')
 
     expect(() =>
       createProduct(repo, { name: 'Refri', barcode: '7891000244109', categoryId: 'mercearia' }),
@@ -1398,14 +1398,14 @@ describe('admin products', () => {
   it('rejeita barcode duplicado', () => {
     repo.products.insert({
       id: 'existente',
-      barcode: '7891000244102',
+      barcode: '7891000244104',
       name: 'Existente',
       categoryId: 'mercearia',
     })
     expect(() =>
       createProduct(repo, {
         name: 'Outro',
-        barcode: '7891000244102',
+        barcode: '7891000244104',
         categoryId: 'mercearia',
       }),
     ).toThrow('Já existe um produto com este código de barras.')
@@ -1423,7 +1423,7 @@ describe('admin products', () => {
   it('atualiza produto mantendo o barcode quando não informado', () => {
     const product = createProduct(repo, {
       name: 'Leite',
-      barcode: '7891000244102',
+      barcode: '7891000244104',
       categoryId: 'mercearia',
     })
     const updated = updateProduct(repo, product.id, {
@@ -1432,7 +1432,7 @@ describe('admin products', () => {
       priceCents: 799,
     })
     expect(updated.name).toBe('Leite Integral')
-    expect(updated.barcode).toBe('7891000244102')
+    expect(updated.barcode).toBe('7891000244104')
     expect(updated.priceCents).toBe(799)
   })
 
@@ -1598,12 +1598,15 @@ export function updateProduct(
   repo.products.update(id, {
     barcode: resolveBarcode(repo, input.barcode, id),
     name: requireName(input.name, 'Nome do produto'),
-    brand: optional(input.brand),
+    brand: input.brand === undefined ? current.brand : optional(input.brand),
     categoryId: requireCategory(repo, input.categoryId),
-    unit: resolveUnit(input.unit),
-    priceCents: resolvePriceCents(input.priceCents),
-    imageUrl: optional(input.imageUrl),
-    aisle: optional(input.aisle),
+    unit: input.unit === undefined ? current.unit : resolveUnit(input.unit),
+    priceCents:
+      input.priceCents === undefined || input.priceCents === null
+        ? current.priceCents
+        : resolvePriceCents(input.priceCents),
+    imageUrl: input.imageUrl === undefined ? current.imageUrl : optional(input.imageUrl),
+    aisle: input.aisle === undefined ? current.aisle : optional(input.aisle),
   })
   return repo.products.adminGet(id)!
 }
