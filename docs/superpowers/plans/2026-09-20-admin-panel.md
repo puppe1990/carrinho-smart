@@ -1505,6 +1505,14 @@ function resolveBarcode(
     }
     return internalBarcode()
   }
+  if (currentId && repo.products.get(currentId)?.barcode === value) return value
+  if (/^INT-/i.test(value)) {
+    const existing = repo.products.findByBarcode(value)
+    if (existing && existing.id !== currentId) {
+      throw new Error('Já existe um produto com este código de barras.')
+    }
+    return value
+  }
   const normalized = normalizeBarcode(value)
   if (normalized.length === 13 && !isValidEan13(normalized)) {
     throw new Error('Código de barras EAN-13 inválido.')
@@ -1540,8 +1548,10 @@ function requireCategory(repo: Repository, categoryId: string | undefined): stri
 }
 
 function clampPage(filter: PageFilter): { page: number; pageSize: number } {
-  const page = Math.max(1, filter.page ?? 1)
-  const pageSize = Math.min(100, Math.max(1, filter.pageSize ?? 20))
+  const rawPage = Number(filter.page)
+  const rawSize = Number(filter.pageSize)
+  const page = Number.isFinite(rawPage) ? Math.max(1, Math.floor(rawPage)) : 1
+  const pageSize = Number.isFinite(rawSize) ? Math.min(100, Math.max(1, Math.floor(rawSize))) : 20
   return { page, pageSize }
 }
 

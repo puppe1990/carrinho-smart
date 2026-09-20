@@ -279,10 +279,66 @@ describe('admin products', () => {
     expect(updated.aisle).toBe('Corredor 2')
   })
 
+  it('limpa campos de texto quando null é informado na atualização', () => {
+    const product = createProduct(repo, {
+      name: 'Leite',
+      categoryId: 'mercearia',
+      brand: 'Nestlé',
+      imageUrl: 'https://exemplo.com/leite.png',
+      aisle: 'Corredor 2',
+    })
+    const updated = updateProduct(repo, product.id, {
+      name: 'Leite',
+      categoryId: 'mercearia',
+      brand: null,
+      imageUrl: null,
+      aisle: null,
+    })
+    expect(updated.brand).toBeNull()
+    expect(updated.imageUrl).toBeNull()
+    expect(updated.aisle).toBeNull()
+  })
+
+  it('preserva o código interno no round-trip de edição', () => {
+    const product = createProduct(repo, { name: 'Granel', categoryId: 'mercearia' })
+    expect(product.barcode.startsWith('INT-')).toBe(true)
+
+    const updated = updateProduct(repo, product.id, {
+      name: 'Granel Premium',
+      barcode: product.barcode,
+      categoryId: 'mercearia',
+    })
+    expect(updated.barcode).toBe(product.barcode)
+  })
+
   it('rejeita atualização de produto inexistente', () => {
     expect(() => updateProduct(repo, 'nao-existe', { name: 'X', categoryId: 'mercearia' })).toThrow(
       'Produto não encontrado.',
     )
+  })
+
+  it('permite manter o próprio barcode e rejeita o de outro produto', () => {
+    const product = createProduct(repo, {
+      name: 'Café',
+      barcode: '7891000244104',
+      categoryId: 'mercearia',
+    })
+    createProduct(repo, { name: 'Leite', barcode: '7891000244111', categoryId: 'mercearia' })
+
+    const same = updateProduct(repo, product.id, {
+      name: 'Café Premium',
+      barcode: '7891000244104',
+      categoryId: 'mercearia',
+    })
+    expect(same.barcode).toBe('7891000244104')
+
+    expect(() =>
+      updateProduct(repo, product.id, {
+        name: 'Café',
+        barcode: '7891000244111',
+        categoryId: 'mercearia',
+      }),
+    ).toThrow('Já existe um produto com este código de barras.')
   })
 
   it('bloqueia exclusão de produto em uso', () => {
@@ -308,5 +364,15 @@ describe('admin products', () => {
     expect(result.items.map((p) => p.name)).toEqual(['Leite'])
     expect(result.total).toBe(1)
     expect(result.categories.length).toBeGreaterThan(0)
+  })
+
+  it('normaliza paginação inválida para os limites padrão', () => {
+    const result = listProducts(repo, { page: Number.NaN, pageSize: 2.5 })
+    expect(result.page).toBe(1)
+    expect(result.pageSize).toBe(2)
+
+    const clamped = listProducts(repo, { page: -3, pageSize: 999 })
+    expect(clamped.page).toBe(1)
+    expect(clamped.pageSize).toBe(100)
   })
 })
