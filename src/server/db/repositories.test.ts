@@ -24,6 +24,17 @@ beforeEach(() => {
     color: 'secondary',
   })
   repo.stores.insert({ id: 'store-1', name: 'Pão de Açúcar - Morumbi', city: 'São Paulo' })
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS "user" (
+       id TEXT PRIMARY KEY,
+       name TEXT NOT NULL,
+       email TEXT NOT NULL UNIQUE,
+       emailVerified INTEGER NOT NULL DEFAULT 0,
+       image TEXT,
+       createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+       updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+     )`,
+  )
 })
 
 function seedProduct(overrides: Partial<Parameters<Repository['products']['insert']>[0]> = {}) {
@@ -510,5 +521,72 @@ describe('product repository (admin)', () => {
     seedProduct()
     repo.products.remove('prod-1')
     expect(repo.products.get('prod-1')).toBeNull()
+  })
+})
+
+function seedUser(id: string, name: string, email: string) {
+  db.prepare('INSERT INTO "user" (id, name, email) VALUES (?, ?, ?)').run(id, name, email)
+}
+
+describe('user repository (admin)', () => {
+  it('lista usuários com contagens e total gasto', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    repo.lists.create({ userId: 'u1', name: 'Semana', shoppingDate: '2026-09-01' })
+    repo.purchases.create({
+      userId: 'u1',
+      storeId: 'store-1',
+      budgetCents: 10000,
+      totalCents: 5000,
+      savingsCents: 0,
+      itemCount: 2,
+      purchasedAt: '2026-09-01T10:00:00.000Z',
+    })
+    const [user] = repo.users.list({})
+    expect(user).toMatchObject({
+      id: 'u1',
+      email: 'ana@x.dev',
+      listCount: 1,
+      purchaseCount: 1,
+      totalSpentCents: 5000,
+    })
+    expect(repo.users.count({ search: 'ana' })).toBe(1)
+  })
+
+  it('busca e obtém usuário por id', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    seedUser('u2', 'Bruno', 'bruno@x.dev')
+    expect(repo.users.list({ search: 'bruno' }).map((u) => u.id)).toEqual(['u2'])
+    expect(repo.users.get('u1')?.name).toBe('Ana')
+    expect(repo.users.get('missing')).toBeNull()
+  })
+})
+
+describe('purchases repository (admin)', () => {
+  it('soma total, conta e lista recentes com nome da loja e usuário', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    repo.purchases.create({
+      userId: 'u1',
+      storeId: 'store-1',
+      budgetCents: 10000,
+      totalCents: 5000,
+      savingsCents: 0,
+      itemCount: 2,
+      purchasedAt: '2026-09-01T10:00:00.000Z',
+    })
+    expect(repo.purchases.adminCount()).toBe(1)
+    expect(repo.purchases.adminSumTotal()).toBe(5000)
+    const [recent] = repo.purchases.adminListRecent(5)
+    expect(recent?.storeName).toBe('Pão de Açúcar - Morumbi')
+    expect(recent?.userName).toBe('Ana')
+  })
+})
+
+describe('lists and carts by user', () => {
+  it('lista listas e carrinhos de um usuário', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    repo.lists.create({ userId: 'u1', name: 'Semana', shoppingDate: '2026-09-01' })
+    repo.carts.getOrCreateActive({ userId: 'u1', storeId: 'store-1' })
+    expect(repo.lists.listByUser('u1')).toHaveLength(1)
+    expect(repo.carts.listByUser('u1')).toHaveLength(1)
   })
 })

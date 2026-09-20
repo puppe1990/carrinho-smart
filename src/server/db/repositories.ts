@@ -5,7 +5,9 @@ import { listProgress, type ListProgress } from '../../domain/shopping-list'
 import type {
   AdminCategoryRecord,
   AdminProductRecord,
+  AdminPurchaseRecord,
   AdminStoreRecord,
+  AdminUserRecord,
   Cart,
   Category,
   NewCartLine,
@@ -173,6 +175,38 @@ function productFilter(filter: { search?: string; categoryId?: string }): {
     params.push(filter.categoryId)
   }
   return { clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '', params }
+}
+
+function toAdminUserRecord(row: any): AdminUserRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    createdAt: row.createdAt,
+    listCount: row.list_count,
+    cartCount: row.cart_count,
+    purchaseCount: row.purchase_count,
+    totalSpentCents: row.total_spent_cents,
+  }
+}
+
+function toAdminPurchaseRecord(row: any): AdminPurchaseRecord {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    userName: row.user_name ?? '',
+    storeId: row.store_id,
+    storeName: row.store_name ?? '',
+    totalCents: row.total_cents,
+    itemCount: row.item_count,
+    purchasedAt: row.purchased_at,
+  }
+}
+
+function userFilter(filter: { search?: string }): { clause: string; params: unknown[] } {
+  if (!filter.search) return { clause: '', params: [] }
+  const term = `%${filter.search.toLowerCase()}%`
+  return { clause: 'WHERE lower(u.name) LIKE ? OR lower(u.email) LIKE ?', params: [term, term] }
 }
 
 export function createRepository(db: Database) {
@@ -523,6 +557,13 @@ export function createRepository(db: Database) {
           .all(cartId) as any[]
       ).map(toCartLine)
     },
+    listByUser(userId: string): Cart[] {
+      return (
+        db
+          .prepare('SELECT * FROM carts WHERE user_id = ? ORDER BY created_at DESC')
+          .all(userId) as any[]
+      ).map(toCart)
+    },
     addLine(cartId: string, input: NewCartLine): CartLine {
       const id = uuid()
       db.prepare(
@@ -733,6 +774,13 @@ export function createRepository(db: Database) {
     progress(listId: string): ListProgress {
       return listProgress(lists.listItems(listId))
     },
+    listByUser(userId: string): ShoppingList[] {
+      return (
+        db
+          .prepare('SELECT * FROM shopping_lists WHERE user_id = ? ORDER BY created_at DESC')
+          .all(userId) as any[]
+      ).map(toShoppingList)
+    },
   }
 
   const purchases = {
@@ -824,6 +872,30 @@ export function createRepository(db: Database) {
           .all(purchaseId) as any[]
       ).map(toPurchaseItem)
     },
+    adminCount(): number {
+      const row = db.prepare('SELECT COUNT(*) AS total FROM purchases').get() as { total: number }
+      return row.total
+    },
+    adminSumTotal(): number {
+      const row = db
+        .prepare('SELECT COALESCE(SUM(total_cents), 0) AS total FROM purchases')
+        .get() as { total: number }
+      return row.total
+    },
+    adminListRecent(limit: number): AdminPurchaseRecord[] {
+      return (
+        db
+          .prepare(
+            `SELECT p.id, p.user_id, u.name AS user_name, p.store_id, s.name AS store_name,
+               p.total_cents, p.item_count, p.purchased_at
+             FROM purchases p
+             LEFT JOIN stores s ON s.id = p.store_id
+             LEFT JOIN "user" u ON u.id = p.user_id
+             ORDER BY p.purchased_at DESC LIMIT ?`,
+          )
+          .all(limit) as any[]
+      ).map(toAdminPurchaseRecord)
+    },
   }
 
   const priceHistory = {
@@ -898,7 +970,46 @@ export function createRepository(db: Database) {
     },
   }
 
-  return { categories, stores, products, carts, lists, purchases, priceHistory, preferences }
+  const users = {
+    list(filter: { search?: string; limit?: number; offset?: number } = {}): AdminUserRecord[] {
+      const { clause, params } = userFilter(filter)
+      return (
+        db
+          .prepare(
+            `SELECT u.id, u.name, u.email, u.createdAt,
+              (SELECT COUNT(*) FROM shopping_lists sl WHERE sl.user_id = u.id) AS list_count,
+              (SELECT COUNT(*) FROM carts c WHERE c.user_id = u.id) AS cart_count,
+              (SELECT COUNT(*) FROM purchases p WHERE p.user_id = u.id) AS purchase_count,
+              (SELECT COALESCE(SUM(p.total_cents), 0) FROM purchases p WHERE p.user_id = u.id) AS total_spent_cents
+             FROM "user" u ${clause}
+             ORDER BY u.createdAt DESC LIMIT ? OFFSET ?`,
+          )
+          .all(...params, filter.limit ?? 50, filter.offset ?? 0) as any[]
+      ).map(toAdminUserRecord)
+    },
+    count(filter: { search?: string } = {}): number {
+      const { clause, params } = userFilter(filter)
+      const row = db.prepare(`SELECT COUNT(*) AS total FROM "user" u ${clause}`).get(...params) as {
+        total: number
+      }
+      return row.total
+    },
+    get(id: string): AdminUserRecord | null {
+      const row = db
+        .prepare(
+          `SELECT u.id, u.name, u.email, u.createdAt,
+            (SELECT COUNT(*) FROM shopping_lists sl WHERE sl.user_id = u.id) AS list_count,
+            (SELECT COUNT(*) FROM carts c WHERE c.user_id = u.id) AS cart_count,
+            (SELECT COUNT(*) FROM purchases p WHERE p.user_id = u.id) AS purchase_count,
+            (SELECT COALESCE(SUM(p.total_cents), 0) FROM purchases p WHERE p.user_id = u.id) AS total_spent_cents
+           FROM "user" u WHERE u.id = ?`,
+        )
+        .get(id) as any
+      return row ? toAdminUserRecord(row) : null
+    },
+  }
+
+  return { categories, stores, products, carts, lists, purchases, priceHistory, preferences, users }
 }
 
 export type Repository = ReturnType<typeof createRepository>
