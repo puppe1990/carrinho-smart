@@ -1,0 +1,4 @@
+{
+  "runtime": "node",
+  "memory_max_mb": 512
+}
