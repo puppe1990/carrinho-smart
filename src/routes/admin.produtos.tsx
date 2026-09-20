@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { formatBRL, parseBRL } from '../domain/money'
 import type { AdminProductRecord } from '../server/db/models'
@@ -22,6 +22,7 @@ import {
   fetchAdminProducts,
   updateAdminProduct,
 } from '../server/functions/admin'
+import { useDebouncedValue } from '../hooks/use-debounced-value'
 
 const PAGE_SIZE = 10
 
@@ -72,10 +73,24 @@ function AdminProductsPage() {
   const [deleting, setDeleting] = useState<AdminProductRecord | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [query, setQuery] = useState(search.q ?? '')
+  const debouncedQuery = useDebouncedValue(query)
 
   function setParam(next: Partial<ProductSearch>) {
     navigate({ search: (prev: ProductSearch) => ({ ...prev, ...next }) })
   }
+
+  useEffect(() => {
+    const current = search.q ?? ''
+    if (debouncedQuery === current) return
+    navigate({
+      search: (prev: ProductSearch) => ({
+        ...prev,
+        q: debouncedQuery || undefined,
+        pagina: undefined,
+      }),
+    })
+  }, [debouncedQuery, search.q, navigate])
 
   function openCreate() {
     setError(null)
@@ -159,11 +174,7 @@ function AdminProductsPage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <SearchInput
-          value={search.q ?? ''}
-          placeholder="Buscar por nome ou marca"
-          onChange={(value) => setParam({ q: value || undefined, pagina: undefined })}
-        />
+        <SearchInput value={query} placeholder="Buscar por nome ou marca" onChange={setQuery} />
         <select
           className={`${adminInputClass} max-w-xs`}
           value={search.categoria ?? ''}

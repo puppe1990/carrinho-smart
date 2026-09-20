@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { formatDate } from '../domain/date'
 import { formatBRL } from '../domain/money'
 import {
   AdminCell,
@@ -60,9 +61,7 @@ function AdminOverviewPage() {
             <AdminCell align="right">
               <span className="tnum font-semibold">{formatBRL(purchase.totalCents)}</span>
             </AdminCell>
-            <AdminCell align="right">
-              {new Date(purchase.purchasedAt).toLocaleDateString('pt-BR')}
-            </AdminCell>
+            <AdminCell align="right">{formatDate(purchase.purchasedAt)}</AdminCell>
           </AdminRow>
         ))}
       </AdminTable>

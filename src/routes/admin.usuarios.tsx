@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { formatBRL } from '../domain/money'
 import {
@@ -9,6 +10,7 @@ import {
   SearchInput,
 } from '../components/admin/primitives'
 import { fetchAdminUsers } from '../server/functions/admin'
+import { useDebouncedValue } from '../hooks/use-debounced-value'
 
 const PAGE_SIZE = 20
 
@@ -34,6 +36,20 @@ function AdminUsersPage() {
   const { items, total, page, pageSize } = Route.useLoaderData()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
+  const [query, setQuery] = useState(search.q ?? '')
+  const debouncedQuery = useDebouncedValue(query)
+
+  useEffect(() => {
+    const current = search.q ?? ''
+    if (debouncedQuery === current) return
+    navigate({
+      search: (prev: UserSearch) => ({
+        ...prev,
+        q: debouncedQuery || undefined,
+        pagina: undefined,
+      }),
+    })
+  }, [debouncedQuery, search.q, navigate])
 
   return (
     <div>
@@ -43,15 +59,7 @@ function AdminUsersPage() {
       />
 
       <div className="mb-4">
-        <SearchInput
-          value={search.q ?? ''}
-          placeholder="Buscar por nome ou e-mail"
-          onChange={(value) =>
-            navigate({
-              search: (prev: UserSearch) => ({ ...prev, q: value || undefined, pagina: undefined }),
-            })
-          }
-        />
+        <SearchInput value={query} placeholder="Buscar por nome ou e-mail" onChange={setQuery} />
       </div>
 
       <AdminTable

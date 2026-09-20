@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { formatDate } from '../domain/date'
 import { formatBRL } from '../domain/money'
 import {
   AdminCell,
@@ -50,9 +51,7 @@ function AdminUserDetailPage() {
             <AdminCell align="right">
               <span className="tnum font-semibold">{formatBRL(purchase.totalCents)}</span>
             </AdminCell>
-            <AdminCell align="right">
-              {new Date(purchase.purchasedAt).toLocaleDateString('pt-BR')}
-            </AdminCell>
+            <AdminCell align="right">{formatDate(purchase.purchasedAt)}</AdminCell>
           </AdminRow>
         ))}
       </AdminTable>
@@ -72,9 +71,7 @@ function AdminUserDetailPage() {
             <AdminCell>Lista</AdminCell>
             <AdminCell>{list.name}</AdminCell>
             <AdminCell>{list.status}</AdminCell>
-            <AdminCell align="right">
-              {new Date(list.shoppingDate).toLocaleDateString('pt-BR')}
-            </AdminCell>
+            <AdminCell align="right">{formatDate(list.shoppingDate)}</AdminCell>
           </AdminRow>
         ))}
         {carts.map((cart) => (
@@ -82,9 +79,7 @@ function AdminUserDetailPage() {
             <AdminCell>Carrinho</AdminCell>
             <AdminCell>{formatBRL(cart.budgetCents)} de orçamento</AdminCell>
             <AdminCell>{cart.status}</AdminCell>
-            <AdminCell align="right">
-              {new Date(cart.createdAt).toLocaleDateString('pt-BR')}
-            </AdminCell>
+            <AdminCell align="right">{formatDate(cart.createdAt)}</AdminCell>
           </AdminRow>
         ))}
       </AdminTable>
