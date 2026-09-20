@@ -114,7 +114,7 @@ Create `src/server/auth/admin.ts`:
 import type { AuthUser } from './auth'
 import { getCurrentUser, requireSession, type AuthContext } from './session'
 
-export const ADMIN_FORBIDDEN = 'FORBIDDEN_ADMIN'
+export const FORBIDDEN_ADMIN = 'FORBIDDEN_ADMIN'
 
 /** Allowlist de e-mails admin lida de `ADMIN_EMAILS` (CSV). Vazia ⇒ ninguém é admin. */
 export function adminEmails(): string[] {
@@ -138,7 +138,7 @@ export async function getAdminSession(): Promise<{ user: AuthUser | null; isAdmi
 export async function requireAdmin(): Promise<AuthContext> {
   const context = await requireSession()
   if (!isAdminEmail(context.user.email)) {
-    throw new Error(ADMIN_FORBIDDEN)
+    throw new Error(FORBIDDEN_ADMIN)
   }
   return context
 }
