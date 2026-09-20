@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as BemVindoRouteImport } from './routes/bem-vindo'
 import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as ListaRouteImport } from './routes/lista'
@@ -17,12 +18,23 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResumoRouteImport } from './routes/resumo'
 import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminCategoriasRouteImport } from './routes/admin.categorias'
+import { Route as AdminLojasRouteImport } from './routes/admin.lojas'
+import { Route as AdminProdutosRouteImport } from './routes/admin.produtos'
+import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as CompraPurchaseIdRouteImport } from './routes/compra.$purchaseId'
+import { Route as AdminUsuariosUserIdRouteImport } from './routes/admin.usuarios.$userId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BemVindoRoute = BemVindoRouteImport.update({
@@ -60,10 +72,40 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCategoriasRoute = AdminCategoriasRouteImport.update({
+  id: '/categorias',
+  path: '/categorias',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLojasRoute = AdminLojasRouteImport.update({
+  id: '/lojas',
+  path: '/lojas',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProdutosRoute = AdminProdutosRouteImport.update({
+  id: '/produtos',
+  path: '/produtos',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AdminRoute,
+} as any)
 const CompraPurchaseIdRoute = CompraPurchaseIdRouteImport.update({
   id: '/compra/$purchaseId',
   path: '/compra/$purchaseId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsuariosUserIdRoute = AdminUsuariosUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => AdminUsuariosRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -73,6 +115,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/bem-vindo': typeof BemVindoRoute
   '/historico': typeof HistoricoRoute
   '/lista': typeof ListaRoute
@@ -80,7 +123,13 @@ export interface FileRoutesByFullPath {
   '/resumo': typeof ResumoRoute
   '/scanner': typeof ScannerRoute
   '/signup': typeof SignupRoute
+  '/admin/categorias': typeof AdminCategoriasRoute
+  '/admin/lojas': typeof AdminLojasRoute
+  '/admin/produtos': typeof AdminProdutosRoute
+  '/admin/usuarios': typeof AdminUsuariosRouteWithChildren
   '/compra/$purchaseId': typeof CompraPurchaseIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/usuarios/$userId': typeof AdminUsuariosUserIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -92,12 +141,19 @@ export interface FileRoutesByTo {
   '/resumo': typeof ResumoRoute
   '/scanner': typeof ScannerRoute
   '/signup': typeof SignupRoute
+  '/admin/categorias': typeof AdminCategoriasRoute
+  '/admin/lojas': typeof AdminLojasRoute
+  '/admin/produtos': typeof AdminProdutosRoute
+  '/admin/usuarios': typeof AdminUsuariosRouteWithChildren
   '/compra/$purchaseId': typeof CompraPurchaseIdRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/usuarios/$userId': typeof AdminUsuariosUserIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/bem-vindo': typeof BemVindoRoute
   '/historico': typeof HistoricoRoute
   '/lista': typeof ListaRoute
@@ -105,13 +161,20 @@ export interface FileRoutesById {
   '/resumo': typeof ResumoRoute
   '/scanner': typeof ScannerRoute
   '/signup': typeof SignupRoute
+  '/admin/categorias': typeof AdminCategoriasRoute
+  '/admin/lojas': typeof AdminLojasRoute
+  '/admin/produtos': typeof AdminProdutosRoute
+  '/admin/usuarios': typeof AdminUsuariosRouteWithChildren
   '/compra/$purchaseId': typeof CompraPurchaseIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/usuarios/$userId': typeof AdminUsuariosUserIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/bem-vindo'
     | '/historico'
     | '/lista'
@@ -119,7 +182,13 @@ export interface FileRouteTypes {
     | '/resumo'
     | '/scanner'
     | '/signup'
+    | '/admin/categorias'
+    | '/admin/lojas'
+    | '/admin/produtos'
+    | '/admin/usuarios'
     | '/compra/$purchaseId'
+    | '/admin/'
+    | '/admin/usuarios/$userId'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -131,11 +200,18 @@ export interface FileRouteTypes {
     | '/resumo'
     | '/scanner'
     | '/signup'
+    | '/admin/categorias'
+    | '/admin/lojas'
+    | '/admin/produtos'
+    | '/admin/usuarios'
     | '/compra/$purchaseId'
+    | '/admin'
+    | '/admin/usuarios/$userId'
     | '/api/auth/$'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/bem-vindo'
     | '/historico'
     | '/lista'
@@ -143,12 +219,19 @@ export interface FileRouteTypes {
     | '/resumo'
     | '/scanner'
     | '/signup'
+    | '/admin/categorias'
+    | '/admin/lojas'
+    | '/admin/produtos'
+    | '/admin/usuarios'
     | '/compra/$purchaseId'
+    | '/admin/'
+    | '/admin/usuarios/$userId'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   BemVindoRoute: typeof BemVindoRoute
   HistoricoRoute: typeof HistoricoRoute
   ListaRoute: typeof ListaRoute
@@ -167,6 +250,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bem-vindo': {
@@ -218,12 +308,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/categorias': {
+      id: '/admin/categorias'
+      path: '/categorias'
+      fullPath: '/admin/categorias'
+      preLoaderRoute: typeof AdminCategoriasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/lojas': {
+      id: '/admin/lojas'
+      path: '/lojas'
+      fullPath: '/admin/lojas'
+      preLoaderRoute: typeof AdminLojasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/produtos': {
+      id: '/admin/produtos'
+      path: '/produtos'
+      fullPath: '/admin/produtos'
+      preLoaderRoute: typeof AdminProdutosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/usuarios': {
+      id: '/admin/usuarios'
+      path: '/usuarios'
+      fullPath: '/admin/usuarios'
+      preLoaderRoute: typeof AdminUsuariosRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/compra/$purchaseId': {
       id: '/compra/$purchaseId'
       path: '/compra/$purchaseId'
       fullPath: '/compra/$purchaseId'
       preLoaderRoute: typeof CompraPurchaseIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/usuarios/$userId': {
+      id: '/admin/usuarios/$userId'
+      path: '/$userId'
+      fullPath: '/admin/usuarios/$userId'
+      preLoaderRoute: typeof AdminUsuariosUserIdRouteImport
+      parentRoute: typeof AdminUsuariosRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -235,8 +367,39 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminUsuariosRouteChildren {
+  AdminUsuariosUserIdRoute: typeof AdminUsuariosUserIdRoute
+}
+
+const AdminUsuariosRouteChildren: AdminUsuariosRouteChildren = {
+  AdminUsuariosUserIdRoute: AdminUsuariosUserIdRoute,
+}
+
+const AdminUsuariosRouteWithChildren = AdminUsuariosRoute._addFileChildren(
+  AdminUsuariosRouteChildren,
+)
+
+interface AdminRouteChildren {
+  AdminCategoriasRoute: typeof AdminCategoriasRoute
+  AdminLojasRoute: typeof AdminLojasRoute
+  AdminProdutosRoute: typeof AdminProdutosRoute
+  AdminUsuariosRoute: typeof AdminUsuariosRouteWithChildren
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminCategoriasRoute: AdminCategoriasRoute,
+  AdminLojasRoute: AdminLojasRoute,
+  AdminProdutosRoute: AdminProdutosRoute,
+  AdminUsuariosRoute: AdminUsuariosRouteWithChildren,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   BemVindoRoute: BemVindoRoute,
   HistoricoRoute: HistoricoRoute,
   ListaRoute: ListaRoute,
@@ -250,12 +413,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
