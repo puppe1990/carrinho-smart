@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS list_items (
 );
 CREATE INDEX IF NOT EXISTS idx_list_items_list ON list_items(list_id);
 CREATE INDEX IF NOT EXISTS idx_list_items_product ON list_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_list_items_category ON list_items(category_id);
 
 CREATE TABLE IF NOT EXISTS carts (
   id TEXT PRIMARY KEY,
@@ -100,6 +101,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   purchased_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_purchases_user_date ON purchases(user_id, purchased_at);
+CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(purchased_at);
 
 CREATE TABLE IF NOT EXISTS purchase_items (
   id TEXT PRIMARY KEY,

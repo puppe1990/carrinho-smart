@@ -3,7 +3,6 @@ import type {
   AdminCategoryRecord,
   AdminProductRecord,
   AdminPurchaseRecord,
-  AdminStoreRecord,
   AdminUserRecord,
   Cart,
   ShoppingList,
@@ -32,10 +31,6 @@ export interface AdminOverview {
   }
   gmvCents: number
   recentPurchases: AdminPurchaseRecord[]
-}
-
-export interface AdminStoreList {
-  stores: AdminStoreRecord[]
 }
 
 export interface AdminProductList extends ListResult<AdminProductRecord> {

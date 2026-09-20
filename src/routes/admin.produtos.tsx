@@ -341,7 +341,10 @@ function AdminProductsPage() {
             </select>
           </AdminField>
         </div>
-        <AdminField label="Código de barras" hint="EAN-13. Em branco gera um código interno.">
+        <AdminField
+          label="Código de barras"
+          hint="EAN-13. Em branco gera um código interno (ao editar, mantém o atual)."
+        >
           <input
             className={adminInputClass}
             value={form?.barcode ?? ''}

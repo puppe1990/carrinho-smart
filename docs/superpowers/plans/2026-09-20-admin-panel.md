@@ -36,7 +36,7 @@ A coluna `products.barcode` é `TEXT NOT NULL UNIQUE` (`src/server/db/schema.ts:
 - `src/routes/admin.produtos.tsx`
 - `src/routes/admin.categorias.tsx`
 - `src/routes/admin.usuarios.tsx`
-- `src/routes/admin.usuarios.$userId.tsx`
+- `src/routes/admin.usuarios_.$userId.tsx`
 
 **Modificar:**
 
@@ -3553,7 +3553,10 @@ function AdminProductsPage() {
             </select>
           </AdminField>
         </div>
-        <AdminField label="Código de barras" hint="EAN-13. Em branco gera um código interno.">
+        <AdminField
+          label="Código de barras"
+          hint="EAN-13. Em branco gera um código interno (ao editar, mantém o atual)."
+        >
           <input
             className={adminInputClass}
             value={form?.barcode ?? ''}
@@ -3622,7 +3625,7 @@ git commit -m "feat(admin): add products management page"
 **Files:**
 
 - Create: `src/routes/admin.usuarios.tsx`
-- Create: `src/routes/admin.usuarios.$userId.tsx`
+- Create: `src/routes/admin.usuarios_.$userId.tsx`
 
 - [ ] **Step 1: Implementar a lista**
 
@@ -3738,7 +3741,7 @@ function AdminUsersPage() {
 
 - [ ] **Step 2: Implementar o detalhe**
 
-Create `src/routes/admin.usuarios.$userId.tsx`:
+Create `src/routes/admin.usuarios_.$userId.tsx`:
 
 ```tsx
 import { Link, createFileRoute } from '@tanstack/react-router'
@@ -3842,7 +3845,7 @@ Run: `npm run generate-routes && npm run typecheck && npm run lint`
 Expected: sem erros.
 
 ```bash
-git add src/routes/admin.usuarios.tsx 'src/routes/admin.usuarios.$userId.tsx' src/routeTree.gen.ts
+git add src/routes/admin.usuarios.tsx 'src/routes/admin.usuarios_.$userId.tsx' src/routeTree.gen.ts
 git commit -m "feat(admin): add users list and detail pages"
 ```
 
@@ -3975,3 +3978,8 @@ Durante a execução, alguns ajustes foram necessários além do texto original 
 - **Datas**: helper `src/domain/date.ts` (`formatDate`) evita "Invalid Date" e deslocamento de dia.
 - **Busca**: `src/hooks/use-debounced-value.ts` evita request por tecla; navegação com `replace`.
 - **ESLint**: override em `src/components/admin/**` com `allowConstantExport` para as constantes de estilo.
+- **Rota de detalhe do usuário**: o arquivo foi renomeado para `admin.usuarios_.$userId.tsx` para
+  não aninhar sob `admin.usuarios` (que não renderiza `<Outlet/>`). Sem isso, a página de detalhe
+  não renderizava.
+- **`AdminStoreList`** removido de `admin-types.ts` (não utilizado).
+- **Hint de barcode**: esclarece que, ao editar, um código em branco mantém o atual.

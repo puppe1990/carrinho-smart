@@ -24,7 +24,7 @@ import { Route as AdminLojasRouteImport } from './routes/admin.lojas'
 import { Route as AdminProdutosRouteImport } from './routes/admin.produtos'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as CompraPurchaseIdRouteImport } from './routes/compra.$purchaseId'
-import { Route as AdminUsuariosUserIdRouteImport } from './routes/admin.usuarios.$userId'
+import { Route as AdminUsuariosUserIdRouteImport } from './routes/admin.usuarios_.$userId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -103,9 +103,9 @@ const CompraPurchaseIdRoute = CompraPurchaseIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsuariosUserIdRoute = AdminUsuariosUserIdRouteImport.update({
-  id: '/$userId',
-  path: '/$userId',
-  getParentRoute: () => AdminUsuariosRoute,
+  id: '/usuarios_/$userId',
+  path: '/usuarios/$userId',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -126,7 +126,7 @@ export interface FileRoutesByFullPath {
   '/admin/categorias': typeof AdminCategoriasRoute
   '/admin/lojas': typeof AdminLojasRoute
   '/admin/produtos': typeof AdminProdutosRoute
-  '/admin/usuarios': typeof AdminUsuariosRouteWithChildren
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/compra/$purchaseId': typeof CompraPurchaseIdRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/usuarios/$userId': typeof AdminUsuariosUserIdRoute
@@ -144,7 +144,7 @@ export interface FileRoutesByTo {
   '/admin/categorias': typeof AdminCategoriasRoute
   '/admin/lojas': typeof AdminLojasRoute
   '/admin/produtos': typeof AdminProdutosRoute
-  '/admin/usuarios': typeof AdminUsuariosRouteWithChildren
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/compra/$purchaseId': typeof CompraPurchaseIdRoute
   '/admin': typeof AdminIndexRoute
   '/admin/usuarios/$userId': typeof AdminUsuariosUserIdRoute
@@ -164,10 +164,10 @@ export interface FileRoutesById {
   '/admin/categorias': typeof AdminCategoriasRoute
   '/admin/lojas': typeof AdminLojasRoute
   '/admin/produtos': typeof AdminProdutosRoute
-  '/admin/usuarios': typeof AdminUsuariosRouteWithChildren
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/compra/$purchaseId': typeof CompraPurchaseIdRoute
   '/admin/': typeof AdminIndexRoute
-  '/admin/usuarios/$userId': typeof AdminUsuariosUserIdRoute
+  '/admin/usuarios_/$userId': typeof AdminUsuariosUserIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
@@ -225,7 +225,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/compra/$purchaseId'
     | '/admin/'
-    | '/admin/usuarios/$userId'
+    | '/admin/usuarios_/$userId'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -350,12 +350,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompraPurchaseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/usuarios/$userId': {
-      id: '/admin/usuarios/$userId'
-      path: '/$userId'
+    '/admin/usuarios_/$userId': {
+      id: '/admin/usuarios_/$userId'
+      path: '/usuarios/$userId'
       fullPath: '/admin/usuarios/$userId'
       preLoaderRoute: typeof AdminUsuariosUserIdRouteImport
-      parentRoute: typeof AdminUsuariosRoute
+      parentRoute: typeof AdminRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -367,32 +367,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AdminUsuariosRouteChildren {
-  AdminUsuariosUserIdRoute: typeof AdminUsuariosUserIdRoute
-}
-
-const AdminUsuariosRouteChildren: AdminUsuariosRouteChildren = {
-  AdminUsuariosUserIdRoute: AdminUsuariosUserIdRoute,
-}
-
-const AdminUsuariosRouteWithChildren = AdminUsuariosRoute._addFileChildren(
-  AdminUsuariosRouteChildren,
-)
-
 interface AdminRouteChildren {
   AdminCategoriasRoute: typeof AdminCategoriasRoute
   AdminLojasRoute: typeof AdminLojasRoute
   AdminProdutosRoute: typeof AdminProdutosRoute
-  AdminUsuariosRoute: typeof AdminUsuariosRouteWithChildren
+  AdminUsuariosRoute: typeof AdminUsuariosRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminUsuariosUserIdRoute: typeof AdminUsuariosUserIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminCategoriasRoute: AdminCategoriasRoute,
   AdminLojasRoute: AdminLojasRoute,
   AdminProdutosRoute: AdminProdutosRoute,
-  AdminUsuariosRoute: AdminUsuariosRouteWithChildren,
+  AdminUsuariosRoute: AdminUsuariosRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminUsuariosUserIdRoute: AdminUsuariosUserIdRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

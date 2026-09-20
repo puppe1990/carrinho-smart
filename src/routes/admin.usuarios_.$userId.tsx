@@ -10,7 +10,7 @@ import {
 } from '../components/admin/primitives'
 import { fetchAdminUserDetail } from '../server/functions/admin'
 
-export const Route = createFileRoute('/admin/usuarios/$userId')({
+export const Route = createFileRoute('/admin/usuarios_/$userId')({
   loader: ({ params }) => fetchAdminUserDetail({ data: { userId: params.userId } }),
   component: AdminUserDetailPage,
 })

@@ -128,7 +128,7 @@ Adicionar métodos que faltam (mantendo o estilo de prepared statements):
 
 - `categories`: `insert` (separado de `upsert`), `update`, `remove`, `countReferences(id)`
   (conta produtos e itens de lista que referenciam a categoria, cobrindo ambas as FKs).
-- `stores`: `update`, `remove`, `countUsage(id)` (carts + purchases).
+- `stores`: `update`, `remove`, `countUsage(id)` (carts + purchases + histórico de preço).
 - `products`: `update`, `remove`, `countUsage(id)`, `adminList({ search, categoryId, limit,
 offset })`, `adminCount({ search, categoryId })`.
 - `users` (novo namespace, lê a tabela `user` do Better Auth): `list({ search, limit,
