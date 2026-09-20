@@ -1,8 +1,11 @@
-import type { AdminCategoryRecord, AdminStoreRecord } from '../db/models'
+import { isValidEan13, normalizeBarcode } from '../../domain/barcode'
+import type { AdminCategoryRecord, AdminProductRecord, AdminStoreRecord, Unit } from '../db/models'
 import type { Repository } from '../db/repositories'
 import { uniqueSlug } from '../db/slug'
+import type { AdminProductList, PageFilter } from './admin-types'
 
 const COLORS = ['primary', 'secondary', 'tertiary', 'outline']
+const UNITS: Unit[] = ['un', 'kg', 'L']
 const MAX_NAME = 120
 
 function requireName(value: string | undefined, label: string): string {
@@ -105,4 +108,133 @@ export function deleteCategory(repo: Repository, id: string): void {
     throw new Error(`Não é possível excluir: ${count} registro(s) usam esta categoria.`)
   }
   repo.categories.remove(id)
+}
+
+function resolveBarcode(
+  repo: Repository,
+  raw: string | null | undefined,
+  currentId?: string,
+): string {
+  const value = (raw ?? '').trim()
+  if (!value) {
+    if (currentId) {
+      const current = repo.products.get(currentId)
+      if (current) return current.barcode
+    }
+    return internalBarcode()
+  }
+  const normalized = normalizeBarcode(value)
+  if (normalized.length === 13 && !isValidEan13(normalized)) {
+    throw new Error('Código de barras EAN-13 inválido.')
+  }
+  const existing = repo.products.findByBarcode(normalized)
+  if (existing && existing.id !== currentId) {
+    throw new Error('Já existe um produto com este código de barras.')
+  }
+  return normalized
+}
+
+function internalBarcode(): string {
+  const suffix = globalThis.crypto.randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()
+  return `INT-${suffix}`
+}
+
+function resolvePriceCents(value: number | undefined | null): number {
+  if (value === undefined || value === null) return 0
+  if (!Number.isFinite(value) || value < 0) throw new Error('Preço inválido.')
+  return Math.round(value)
+}
+
+function resolveUnit(value?: string): Unit {
+  const unit = (value ?? 'un').trim()
+  if (!UNITS.includes(unit as Unit)) throw new Error('Unidade inválida.')
+  return unit as Unit
+}
+
+function requireCategory(repo: Repository, categoryId: string | undefined): string {
+  const id = (categoryId ?? '').trim()
+  if (!id || !repo.categories.get(id)) throw new Error('Selecione uma categoria válida.')
+  return id
+}
+
+function clampPage(filter: PageFilter): { page: number; pageSize: number } {
+  const page = Math.max(1, filter.page ?? 1)
+  const pageSize = Math.min(100, Math.max(1, filter.pageSize ?? 20))
+  return { page, pageSize }
+}
+
+export interface ProductInput {
+  barcode?: string | null
+  name: string
+  brand?: string | null
+  categoryId: string
+  unit?: string
+  priceCents?: number | null
+  imageUrl?: string | null
+  aisle?: string | null
+}
+
+export function listProducts(
+  repo: Repository,
+  filter: PageFilter & { categoryId?: string } = {},
+): AdminProductList {
+  const { page, pageSize } = clampPage(filter)
+  const items = repo.products.adminList({
+    search: filter.search,
+    categoryId: filter.categoryId,
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+  })
+  const total = repo.products.adminCount({ search: filter.search, categoryId: filter.categoryId })
+  return { items, total, page, pageSize, categories: repo.categories.adminList() }
+}
+
+export function createProduct(repo: Repository, input: ProductInput): AdminProductRecord {
+  const name = requireName(input.name, 'Nome do produto')
+  const id = uniqueSlug(name, (candidate) => repo.products.get(candidate) !== null)
+  repo.products.insert({
+    id,
+    barcode: resolveBarcode(repo, input.barcode),
+    name,
+    brand: optional(input.brand),
+    categoryId: requireCategory(repo, input.categoryId),
+    unit: resolveUnit(input.unit),
+    priceCents: resolvePriceCents(input.priceCents),
+    imageUrl: optional(input.imageUrl),
+    aisle: optional(input.aisle),
+  })
+  return repo.products.adminGet(id)!
+}
+
+export function updateProduct(
+  repo: Repository,
+  id: string,
+  input: ProductInput,
+): AdminProductRecord {
+  const current = repo.products.get(id)
+  if (!current) throw new Error('Produto não encontrado.')
+  repo.products.update(id, {
+    barcode: resolveBarcode(repo, input.barcode, id),
+    name: requireName(input.name, 'Nome do produto'),
+    brand: input.brand === undefined ? current.brand : optional(input.brand),
+    categoryId: requireCategory(repo, input.categoryId),
+    unit: input.unit === undefined ? current.unit : resolveUnit(input.unit),
+    priceCents:
+      input.priceCents === undefined || input.priceCents === null
+        ? current.priceCents
+        : resolvePriceCents(input.priceCents),
+    imageUrl: input.imageUrl === undefined ? current.imageUrl : optional(input.imageUrl),
+    aisle: input.aisle === undefined ? current.aisle : optional(input.aisle),
+  })
+  return repo.products.adminGet(id)!
+}
+
+export function deleteProduct(repo: Repository, id: string): void {
+  const current = repo.products.get(id)
+  if (!current) throw new Error('Produto não encontrado.')
+  const usage = repo.products.countUsage(id)
+  if (usage > 0) {
+    throw new Error(`Não é possível excluir: ${usage} registro(s) usam este produto.`)
+  }
+  repo.products.remove(id)
 }

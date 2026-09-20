@@ -3,12 +3,16 @@ import { createDatabase, type Database } from '../db/client'
 import { createRepository, type Repository } from '../db/repositories'
 import {
   createCategory,
+  createProduct,
   createStore,
   deleteCategory,
+  deleteProduct,
   deleteStore,
   listCategories,
+  listProducts,
   listStores,
   updateCategory,
+  updateProduct,
   updateStore,
 } from './admin-service'
 
@@ -183,5 +187,126 @@ describe('admin categories', () => {
 
   it('lista categorias com contagem de referências', () => {
     expect(listCategories(repo).map((c) => c.referenceCount)).toContain(0)
+  })
+})
+
+describe('admin products', () => {
+  it('cria produto com slug e gera código interno quando o barcode é vazio', () => {
+    const product = createProduct(repo, {
+      name: 'Café Torrado',
+      categoryId: 'mercearia',
+      priceCents: 1890,
+      unit: 'un',
+    })
+    expect(product.id).toBe('cafe-torrado')
+    expect(product.barcode.startsWith('INT-')).toBe(true)
+    expect(product.categoryName).toBe('Mercearia')
+  })
+
+  it('aceita EAN-13 válido e rejeita inválido', () => {
+    const valid = createProduct(repo, {
+      name: 'Leite',
+      barcode: '7891000244104',
+      categoryId: 'mercearia',
+    })
+    expect(valid.barcode).toBe('7891000244104')
+
+    expect(() =>
+      createProduct(repo, { name: 'Refri', barcode: '7891000244109', categoryId: 'mercearia' }),
+    ).toThrow('Código de barras EAN-13 inválido.')
+  })
+
+  it('rejeita barcode duplicado', () => {
+    repo.products.insert({
+      id: 'existente',
+      barcode: '7891000244104',
+      name: 'Existente',
+      categoryId: 'mercearia',
+    })
+    expect(() =>
+      createProduct(repo, {
+        name: 'Outro',
+        barcode: '7891000244104',
+        categoryId: 'mercearia',
+      }),
+    ).toThrow('Já existe um produto com este código de barras.')
+  })
+
+  it('rejeita categoria inexistente, unidade e preço inválidos', () => {
+    expect(() => createProduct(repo, { name: 'X', categoryId: 'nao-existe' })).toThrow(
+      'Selecione uma categoria válida.',
+    )
+    expect(() =>
+      createProduct(repo, { name: 'X', categoryId: 'mercearia', unit: 'caixa' }),
+    ).toThrow('Unidade inválida.')
+    expect(() =>
+      createProduct(repo, { name: 'X', categoryId: 'mercearia', priceCents: -1 }),
+    ).toThrow('Preço inválido.')
+  })
+
+  it('atualiza produto mantendo o barcode quando não informado', () => {
+    const product = createProduct(repo, {
+      name: 'Leite',
+      barcode: '7891000244104',
+      categoryId: 'mercearia',
+    })
+    const updated = updateProduct(repo, product.id, {
+      name: 'Leite Integral',
+      categoryId: 'mercearia',
+      priceCents: 799,
+    })
+    expect(updated.name).toBe('Leite Integral')
+    expect(updated.barcode).toBe('7891000244104')
+    expect(updated.priceCents).toBe(799)
+  })
+
+  it('preserva campos opcionais omitidos na atualização', () => {
+    const product = createProduct(repo, {
+      name: 'Leite',
+      categoryId: 'mercearia',
+      brand: 'Nestlé',
+      unit: 'L',
+      priceCents: 799,
+      aisle: 'Corredor 2',
+    })
+    const updated = updateProduct(repo, product.id, {
+      name: 'Leite Integral',
+      categoryId: 'mercearia',
+    })
+    expect(updated.brand).toBe('Nestlé')
+    expect(updated.unit).toBe('L')
+    expect(updated.priceCents).toBe(799)
+    expect(updated.aisle).toBe('Corredor 2')
+  })
+
+  it('rejeita atualização de produto inexistente', () => {
+    expect(() => updateProduct(repo, 'nao-existe', { name: 'X', categoryId: 'mercearia' })).toThrow(
+      'Produto não encontrado.',
+    )
+  })
+
+  it('bloqueia exclusão de produto em uso', () => {
+    const product = createProduct(repo, { name: 'Café', categoryId: 'mercearia' })
+    repo.lists.create({ userId: 'u1', name: 'Semana', shoppingDate: '2026-09-01' })
+    const list = repo.lists.getActive('u1')!
+    repo.lists.addItem(list.id, { productId: product.id, name: 'Café', categoryId: 'mercearia' })
+    expect(() => deleteProduct(repo, product.id)).toThrow(
+      'Não é possível excluir: 1 registro(s) usam este produto.',
+    )
+  })
+
+  it('exclui produto sem uso', () => {
+    const product = createProduct(repo, { name: 'Descartável', categoryId: 'mercearia' })
+    deleteProduct(repo, product.id)
+    expect(repo.products.get(product.id)).toBeNull()
+  })
+
+  it('lista produtos com filtro e paginação', () => {
+    createProduct(repo, { name: 'Café', categoryId: 'mercearia' })
+    createProduct(repo, { name: 'Leite', categoryId: 'mercearia' })
+    const result = listProducts(repo, { search: 'le', page: 1, pageSize: 10 })
+    expect(result.items.map((p) => p.name)).toEqual(['Leite'])
+    expect(result.total).toBe(1)
+    expect(result.categories.length).toBeGreaterThan(0)
   })
 })
