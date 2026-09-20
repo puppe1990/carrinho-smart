@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createDatabase, type Database } from '../db/client'
 import { createRepository, type Repository } from '../db/repositories'
 import {
+  AdminError,
   createCategory,
   createProduct,
   createStore,
@@ -51,6 +52,11 @@ describe('admin stores', () => {
 
   it('rejeita nome vazio', () => {
     expect(() => createStore(repo, { name: '   ' })).toThrow('Nome da loja é obrigatório.')
+  })
+
+  it('lança AdminError para falhas de validação esperadas', () => {
+    expect(() => createStore(repo, { name: '' })).toThrow(AdminError)
+    expect(() => createCategory(repo, { name: '' })).toThrow(AdminError)
   })
 
   it('normaliza cidade vazia para null', () => {

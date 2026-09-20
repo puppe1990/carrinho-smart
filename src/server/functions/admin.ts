@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getAdminSession, requireAdmin } from '../auth/admin'
 import type { AdminCategoryRecord, AdminProductRecord, AdminStoreRecord } from '../db/models'
 import {
+  AdminError,
   createCategory,
   createProduct,
   createStore,
@@ -26,7 +27,9 @@ function toResult<T>(fn: () => T): AdminResult<T> {
   try {
     return { ok: true, data: fn() }
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : 'Erro inesperado.' }
+    if (error instanceof AdminError) return { ok: false, error: error.message }
+    console.error('admin mutation failed', error)
+    return { ok: false, error: 'Não foi possível concluir. Tente novamente.' }
   }
 }
 
@@ -85,7 +88,8 @@ export const updateAdminStore = createServerFn({ method: 'POST' })
   .validator((data: StoreInput & { id: string }) => data)
   .handler(async ({ data }): Promise<AdminResult<AdminStoreRecord>> => {
     const { repo } = await requireAdmin()
-    return toResult(() => updateStore(repo, data.id, data))
+    const { id, ...input } = data
+    return toResult(() => updateStore(repo, id, input))
   })
 
 export const deleteAdminStore = createServerFn({ method: 'POST' })
@@ -109,7 +113,8 @@ export const updateAdminCategory = createServerFn({ method: 'POST' })
   .validator((data: CategoryInput & { id: string }) => data)
   .handler(async ({ data }): Promise<AdminResult<AdminCategoryRecord>> => {
     const { repo } = await requireAdmin()
-    return toResult(() => updateCategory(repo, data.id, data))
+    const { id, ...input } = data
+    return toResult(() => updateCategory(repo, id, input))
   })
 
 export const deleteAdminCategory = createServerFn({ method: 'POST' })
@@ -133,7 +138,8 @@ export const updateAdminProduct = createServerFn({ method: 'POST' })
   .validator((data: ProductInput & { id: string }) => data)
   .handler(async ({ data }): Promise<AdminResult<AdminProductRecord>> => {
     const { repo } = await requireAdmin()
-    return toResult(() => updateProduct(repo, data.id, data))
+    const { id, ...input } = data
+    return toResult(() => updateProduct(repo, id, input))
   })
 
 export const deleteAdminProduct = createServerFn({ method: 'POST' })

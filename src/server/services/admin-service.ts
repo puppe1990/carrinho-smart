@@ -21,10 +21,13 @@ const UNITS: Unit[] = ['un', 'kg', 'L']
 const MAX_NAME = 120
 const RECENT_PURCHASES_LIMIT = 8
 
+export class AdminError extends Error {}
+
 function requireName(value: string | undefined, label: string): string {
   const name = (value ?? '').trim()
-  if (!name) throw new Error(`${label} é obrigatório.`)
-  if (name.length > MAX_NAME) throw new Error(`${label} deve ter no máximo ${MAX_NAME} caracteres.`)
+  if (!name) throw new AdminError(`${label} é obrigatório.`)
+  if (name.length > MAX_NAME)
+    throw new AdminError(`${label} deve ter no máximo ${MAX_NAME} caracteres.`)
   return name
 }
 
@@ -35,7 +38,7 @@ function optional(value: string | null | undefined): string | null {
 
 function resolveColor(value?: string): string {
   const color = (value ?? 'primary').trim()
-  if (!COLORS.includes(color)) throw new Error('Cor da categoria inválida.')
+  if (!COLORS.includes(color)) throw new AdminError('Cor da categoria inválida.')
   return color
 }
 
@@ -57,7 +60,7 @@ export function createStore(repo: Repository, input: StoreInput): AdminStoreReco
 
 export function updateStore(repo: Repository, id: string, input: StoreInput): AdminStoreRecord {
   const current = repo.stores.get(id)
-  if (!current) throw new Error('Loja não encontrada.')
+  if (!current) throw new AdminError('Loja não encontrada.')
   const name = requireName(input.name, 'Nome da loja')
   repo.stores.update(id, {
     name,
@@ -68,10 +71,10 @@ export function updateStore(repo: Repository, id: string, input: StoreInput): Ad
 
 export function deleteStore(repo: Repository, id: string): void {
   const store = repo.stores.get(id)
-  if (!store) throw new Error('Loja não encontrada.')
+  if (!store) throw new AdminError('Loja não encontrada.')
   const usage = repo.stores.countUsage(id)
   if (usage > 0) {
-    throw new Error(`Não é possível excluir: ${usage} registro(s) usam esta loja.`)
+    throw new AdminError(`Não é possível excluir: ${usage} registro(s) usam esta loja.`)
   }
   repo.stores.remove(id)
 }
@@ -104,7 +107,7 @@ export function updateCategory(
   input: CategoryInput,
 ): AdminCategoryRecord {
   const current = repo.categories.get(id)
-  if (!current) throw new Error('Categoria não encontrada.')
+  if (!current) throw new AdminError('Categoria não encontrada.')
   repo.categories.update(id, {
     name: requireName(input.name, 'Nome da categoria'),
     icon: input.icon === undefined ? current.icon : (optional(input.icon) ?? 'category'),
@@ -115,10 +118,10 @@ export function updateCategory(
 
 export function deleteCategory(repo: Repository, id: string): void {
   const current = repo.categories.get(id)
-  if (!current) throw new Error('Categoria não encontrada.')
+  if (!current) throw new AdminError('Categoria não encontrada.')
   const count = repo.categories.countReferences(id)
   if (count > 0) {
-    throw new Error(`Não é possível excluir: ${count} registro(s) usam esta categoria.`)
+    throw new AdminError(`Não é possível excluir: ${count} registro(s) usam esta categoria.`)
   }
   repo.categories.remove(id)
 }
@@ -140,17 +143,17 @@ function resolveBarcode(
   if (/^INT-/i.test(value)) {
     const existing = repo.products.findByBarcode(value)
     if (existing && existing.id !== currentId) {
-      throw new Error('Já existe um produto com este código de barras.')
+      throw new AdminError('Já existe um produto com este código de barras.')
     }
     return value
   }
   const normalized = normalizeBarcode(value)
   if (normalized.length === 13 && !isValidEan13(normalized)) {
-    throw new Error('Código de barras EAN-13 inválido.')
+    throw new AdminError('Código de barras EAN-13 inválido.')
   }
   const existing = repo.products.findByBarcode(normalized)
   if (existing && existing.id !== currentId) {
-    throw new Error('Já existe um produto com este código de barras.')
+    throw new AdminError('Já existe um produto com este código de barras.')
   }
   return normalized
 }
@@ -162,19 +165,19 @@ function internalBarcode(): string {
 
 function resolvePriceCents(value: number | undefined | null): number {
   if (value === undefined || value === null) return 0
-  if (!Number.isFinite(value) || value < 0) throw new Error('Preço inválido.')
+  if (!Number.isFinite(value) || value < 0) throw new AdminError('Preço inválido.')
   return Math.round(value)
 }
 
 function resolveUnit(value?: string): Unit {
   const unit = (value ?? 'un').trim()
-  if (!UNITS.includes(unit as Unit)) throw new Error('Unidade inválida.')
+  if (!UNITS.includes(unit as Unit)) throw new AdminError('Unidade inválida.')
   return unit as Unit
 }
 
 function requireCategory(repo: Repository, categoryId: string | undefined): string {
   const id = (categoryId ?? '').trim()
-  if (!id || !repo.categories.get(id)) throw new Error('Selecione uma categoria válida.')
+  if (!id || !repo.categories.get(id)) throw new AdminError('Selecione uma categoria válida.')
   return id
 }
 
@@ -235,7 +238,7 @@ export function updateProduct(
   input: ProductInput,
 ): AdminProductRecord {
   const current = repo.products.get(id)
-  if (!current) throw new Error('Produto não encontrado.')
+  if (!current) throw new AdminError('Produto não encontrado.')
   repo.products.update(id, {
     barcode: resolveBarcode(repo, input.barcode, id),
     name: requireName(input.name, 'Nome do produto'),
@@ -254,10 +257,10 @@ export function updateProduct(
 
 export function deleteProduct(repo: Repository, id: string): void {
   const current = repo.products.get(id)
-  if (!current) throw new Error('Produto não encontrado.')
+  if (!current) throw new AdminError('Produto não encontrado.')
   const usage = repo.products.countUsage(id)
   if (usage > 0) {
-    throw new Error(`Não é possível excluir: ${usage} registro(s) usam este produto.`)
+    throw new AdminError(`Não é possível excluir: ${usage} registro(s) usam este produto.`)
   }
   repo.products.remove(id)
 }
@@ -289,7 +292,7 @@ export function listUsers(repo: Repository, filter: PageFilter = {}): ListResult
 
 export function getUserDetail(repo: Repository, userId: string): AdminUserDetail {
   const user = repo.users.get(userId)
-  if (!user) throw new Error('Usuário não encontrado.')
+  if (!user) throw new AdminError('Usuário não encontrado.')
   return {
     user,
     lists: repo.lists.listByUser(userId),
