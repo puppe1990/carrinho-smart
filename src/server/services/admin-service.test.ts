@@ -425,6 +425,7 @@ describe('admin overview', () => {
     expect(overview.gmvCents).toBe(45000)
     expect(overview.recentPurchases).toHaveLength(8)
     expect(overview.recentPurchases[0]?.totalCents).toBe(9000)
+    expect(overview.recentPurchases[7]?.totalCents).toBe(2000)
     expect(overview.recentPurchases[0]?.userName).toBe('Ana')
   })
 })

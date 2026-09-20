@@ -19,6 +19,7 @@ import type {
 const COLORS = ['primary', 'secondary', 'tertiary', 'outline']
 const UNITS: Unit[] = ['un', 'kg', 'L']
 const MAX_NAME = 120
+const RECENT_PURCHASES_LIMIT = 8
 
 function requireName(value: string | undefined, label: string): string {
   const name = (value ?? '').trim()
@@ -271,7 +272,7 @@ export function getOverview(repo: Repository): AdminOverview {
       purchases: repo.purchases.adminCount(),
     },
     gmvCents: repo.purchases.adminSumTotal(),
-    recentPurchases: repo.purchases.adminListRecent(8),
+    recentPurchases: repo.purchases.adminListRecent(RECENT_PURCHASES_LIMIT),
   }
 }
 
