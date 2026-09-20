@@ -1,7 +1,7 @@
 import { createAuth, migrateAuth, type Auth } from '../auth/auth'
 import { getDatabase, type Database } from './client'
 import { createRepository, type Repository } from './repositories'
-import { ensureUserData, seedCatalog } from './seed'
+import { seedCatalog } from './seed'
 
 export interface Runtime {
   db: Database
@@ -24,11 +24,8 @@ async function initRuntime(): Promise<Runtime> {
     seedCatalog(repo, { seed: Number(process.env.SEED ?? 42) })
   }
 
-  const auth = createAuth(db, {
-    onUserCreated: (user) => {
-      ensureUserData(db, repo, user.id)
-    },
-  })
+  // Contas novas começam vazias: dados de demonstração são opcionais (tela /bem-vindo).
+  const auth = createAuth(db)
 
   await migrateAuth(auth)
 

@@ -64,7 +64,7 @@ function ShoppingListPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col pb-32">
+    <div className="flex min-h-screen flex-col pb-64">
       <ScreenHeader storeName={cart.store?.name} />
 
       <main className="flex flex-1 flex-col gap-4 px-4 pt-4">
@@ -197,7 +197,9 @@ function ShoppingListPage() {
 
           {pending.length === 0 && (
             <p className="rounded-xl bg-surface-container-lowest p-4 text-center text-xs text-on-surface-variant shadow-sm">
-              Todos os itens já estão no carrinho.
+              {progress.total === 0
+                ? 'Sua lista está vazia. Adicione itens no campo acima para começar.'
+                : 'Todos os itens já estão no carrinho.'}
             </p>
           )}
 

@@ -68,6 +68,16 @@ describe('auth', () => {
     expect(await resolveUser(auth, new Headers())).toBeNull()
   })
 
+  it('does not create any app data on signup (no silent demo seed)', async () => {
+    await signUp()
+    for (const table of ['carts', 'cart_items', 'shopping_lists', 'list_items', 'purchases']) {
+      const { count } = db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as {
+        count: number
+      }
+      expect(count, `${table} deve estar vazio após o cadastro`).toBe(0)
+    }
+  })
+
   it('calls onUserCreated after a new user is created', async () => {
     const onUserCreated = vi.fn()
     const hookedAuth = createAuth(db, {

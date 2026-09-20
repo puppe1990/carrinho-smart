@@ -15,7 +15,8 @@ Construído com **TanStack Start + SQLite**, **autenticação multitenant** (Bet
 | Rota                  | Tela                     | Descrição                                                                                                                                                                               |
 | --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/login`              | **Entrar**               | Login com e-mail/senha (Better Auth) e atalho para criar conta.                                                                                                                         |
-| `/signup`             | **Criar conta**          | Cadastro com e-mail/senha; gera dados de demonstração isolados para o novo usuário.                                                                                                     |
+| `/signup`             | **Criar conta**          | Cadastro com e-mail/senha. A conta começa **vazia** — nenhum dado é criado automaticamente.                                                                                             |
+| `/bem-vindo`          | **Onboarding**           | Primeira tela pós-cadastro: começar do zero ou explorar com dados de exemplo (ação explícita).                                                                                          |
 | `/`                   | **Carrinho + Orçamento** | Monitor de gasto em tempo real, meta ajustável, gauge, busca, filtros por categoria, stepper de quantidade, economia e dock "Ir ao caixa".                                              |
 | `/scanner`            | **Scanner de produtos**  | Leitura real de código de barras pela câmera (`getUserMedia` + `BarcodeDetector`), com lanterna, entrada manual de EAN, preço na etiqueta, quantidade, promoção e impacto no orçamento. |
 | `/lista`              | **Lista de compras**     | Progresso (anel + barra), itens pendentes vs. já no carrinho, adição rápida e "bipar" item da lista direto para o carrinho.                                                             |
@@ -128,7 +129,7 @@ src/
 
 O desenvolvimento seguiu o ciclo **red → green → refactor**, escrevendo os testes antes da implementação em cada camada.
 
-- **108 testes** em **10 arquivos**, rodando com `npm test`.
+- **115 testes** em **11 arquivos**, rodando com `npm test`.
 - Domínio: funções puras cobrindo dinheiro, orçamento, carrinho, lista, analytics e **código de barras (EAN-13, dígito verificador e classificação de formatos)**.
 - Persistência: repositórios testados com **SQLite em memória** (`:memory:`), incluindo checkout transacional, histórico de preços e **isolamento por usuário**.
 - Seed: garante determinismo por seed, idempotência, reset limpo e separação de dados entre usuários.
@@ -136,7 +137,7 @@ O desenvolvimento seguiu o ciclo **red → green → refactor**, escrevendo os t
 - Auth: signup, signin, rejeição de duplicado/senha errada, resolução de sessão por cookie e hook de criação de usuário.
 
 ```bash
-npm test        # 108 passing
+npm test        # 115 passing
 npm run typecheck
 npm run build
 ```
@@ -152,7 +153,7 @@ O modelo de tenant é **usuário individual**: cada conta enxerga apenas os pró
 - O `beforeLoad` da raiz chama `fetchSession`; rotas privadas redirecionam para `/login` e o usuário logado é redirecionado para fora de `/login`/`/signup`.
 - Toda server function passa por `requireSession()`, que resolve o usuário a partir dos headers (`getRequestHeaders`) e injeta o `userId` nos serviços. Sem sessão, a operação é rejeitada.
 - **Isolamento no SQL:** `carts`, `shopping_lists`, `purchases` e `price_history` têm `user_id` e todas as consultas filtram por ele. O catálogo (`categories`, `stores`, `products`) é referência compartilhada.
-- Ao criar a conta, um hook `databaseHooks.user.create.after` popula dados de demonstração **daquele usuário** (lista, carrinho e histórico), sem vazar entre contas.
+- Ao criar a conta, **nada é gerado automaticamente**. O usuário cai em `/bem-vindo` e escolhe entre começar com o carrinho/lista vazios ou **popular dados de exemplo** (ação explícita, isolada por conta, registrada em `user_preferences`).
 
 > Os testes cobrem o isolamento: um segundo usuário não vê carrinho, lista, compras, histórico de preços nem consegue operar sobre recursos de outro.
 
@@ -255,6 +256,7 @@ Instale os hooks automaticamente com `npm install` (o script `prepare` executa `
 | ------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `user` / `session` / `account`  | Tabelas do Better Auth (contas, sessões e credenciais).                                        |
 | `verification`                  | Tokens de verificação do Better Auth.                                                          |
+| `user_preferences`              | Flags de onboarding por usuário (`demo_data_seeded`, `welcome_shown`).                         |
 | `categories`                    | Categorias (mercearia, laticínios, hortifrúti, limpeza, higiene, padaria) — catálogo global.   |
 | `stores`                        | Mercados disponíveis para troca de loja — catálogo global.                                     |
 | `products`                      | Catálogo com `barcode` (EAN), unidade, preço de referência, corredor — catálogo global.        |

@@ -78,7 +78,7 @@ function CartPage() {
     budget.level === 'over' ? 'error' : budget.level === 'warning' ? 'secondary' : 'primary'
 
   return (
-    <div className="flex min-h-screen flex-col pb-32">
+    <div className="flex min-h-screen flex-col pb-64">
       <ScreenHeader storeName={data.store?.name} onChangeStore={() => setSheet('store')} />
 
       <main className="flex flex-1 flex-col gap-4 px-4 pt-4">
@@ -232,27 +232,46 @@ function CartPage() {
             </h2>
             <button
               type="button"
+              disabled={data.lines.length === 0}
               onClick={() => mutate(() => emptyCart({ data: { cartId: data.cart.id } }))}
-              className="text-[11px] font-bold text-primary hover:underline"
+              className="text-[11px] font-bold text-primary hover:underline disabled:opacity-40"
             >
               Limpar tudo
             </button>
           </div>
 
           {visibleLines.length === 0 ? (
-            <EmptyState
-              icon="shopping_cart"
-              title="Nenhum item no carrinho"
-              description="Use o scanner para bipar produtos ou adicione itens pela busca."
-              action={
-                <Link
-                  to="/scanner"
-                  className="rounded-full bg-primary-container px-4 py-2 text-xs font-bold text-on-primary"
-                >
-                  Abrir scanner
-                </Link>
-              }
-            />
+            data.lines.length === 0 ? (
+              <EmptyState
+                icon="shopping_cart"
+                title="Seu carrinho está vazio"
+                description="Bipe um produto com a câmera ou monte sua lista de compras para começar."
+                action={
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Link
+                      to="/scanner"
+                      className="flex items-center gap-1 rounded-full bg-primary-container px-4 py-2 text-xs font-bold text-on-primary"
+                    >
+                      <Icon name="barcode_scanner" className="text-[16px]" />
+                      Escanear produto
+                    </Link>
+                    <Link
+                      to="/lista"
+                      className="flex items-center gap-1 rounded-full bg-surface-container px-4 py-2 text-xs font-bold text-on-surface"
+                    >
+                      <Icon name="checklist" className="text-[16px]" />
+                      Criar minha lista
+                    </Link>
+                  </div>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon="search_off"
+                title="Nenhum item encontrado"
+                description="Ajuste a busca ou o filtro de categoria para ver os itens do carrinho."
+              />
+            )
           ) : (
             visibleLines.map((line) => (
               <article

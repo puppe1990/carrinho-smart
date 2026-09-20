@@ -5,6 +5,7 @@ import appCss from '../styles.css?url'
 import { AuthContext } from '../auth/session-context'
 import { BottomNav } from '../components/BottomNav'
 import { fetchSession } from '../server/functions/session'
+import { fetchOnboarding } from '../server/functions/onboarding'
 
 const SITE_URL = (process.env.BETTER_AUTH_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 const SITE_TITLE = 'CarrinhoSmart — carrinho inteligente e controle de orçamento'
@@ -12,6 +13,7 @@ const SITE_DESCRIPTION =
   'Bipe produtos, acompanhe o gasto em tempo real contra sua meta, gerencie a lista de compras e feche a compra com recibo e resumo por categoria.'
 
 const PUBLIC_PATHS = ['/login', '/signup']
+const ONBOARDING_PATH = '/bem-vindo'
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
@@ -20,12 +22,19 @@ export const Route = createRootRoute({
 
     const user = await fetchSession()
     const isPublic = PUBLIC_PATHS.includes(location.pathname)
+    const isOnboarding = location.pathname === ONBOARDING_PATH
 
     if (!user && !isPublic) {
       throw redirect({ to: '/login' })
     }
     if (user && isPublic) {
       throw redirect({ to: '/' })
+    }
+    if (user && !isOnboarding) {
+      const onboarding = await fetchOnboarding()
+      if (!onboarding.welcomeShown) {
+        throw redirect({ to: ONBOARDING_PATH })
+      }
     }
 
     return { user }

@@ -627,7 +627,35 @@ export function createRepository(db: Database) {
     },
   }
 
-  return { categories, stores, products, carts, lists, purchases, priceHistory }
+  const preferences = {
+    get(userId: string): { demoDataSeeded: boolean; welcomeShown: boolean } {
+      const row = db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(userId) as any
+      return {
+        demoDataSeeded: Boolean(row?.demo_data_seeded ?? 0),
+        welcomeShown: Boolean(row?.welcome_shown ?? 0),
+      }
+    },
+    update(
+      userId: string,
+      changes: { demoDataSeeded?: boolean; welcomeShown?: boolean },
+    ): { demoDataSeeded: boolean; welcomeShown: boolean } {
+      const current = preferences.get(userId)
+      const next = {
+        demoDataSeeded: changes.demoDataSeeded ?? current.demoDataSeeded,
+        welcomeShown: changes.welcomeShown ?? current.welcomeShown,
+      }
+      db.prepare(
+        `INSERT INTO user_preferences (user_id, demo_data_seeded, welcome_shown)
+         VALUES (?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET
+           demo_data_seeded = excluded.demo_data_seeded,
+           welcome_shown = excluded.welcome_shown`,
+      ).run(userId, next.demoDataSeeded ? 1 : 0, next.welcomeShown ? 1 : 0)
+      return next
+    },
+  }
+
+  return { categories, stores, products, carts, lists, purchases, priceHistory, preferences }
 }
 
 export type Repository = ReturnType<typeof createRepository>
