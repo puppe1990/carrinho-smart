@@ -211,6 +211,29 @@ Validação de EAN-13 (dígito verificador) e a geração de códigos válidos p
 
 ---
 
+## 🚀 Deploy (Cleat)
+
+O projeto está publicado via **[Cleat](https://paas.gestaobem.com)** no servidor `gestaobem-cx33`:
+
+- **URL:** https://carrinho.apps.gestaobem.com
+- **App:** `carrinho-smart` · runtime **node** · porta `4001`
+- **Build:** `npm run build` (Nitro) → start `node .output/server/index.mjs`
+- **Config:** `.cleat_deploy/deploy.json` (`runtime: node`)
+
+```bash
+cleat deploy carrinho-smart --watch   # publica a branch main
+cleat status carrinho-smart           # histórico de deploys
+cleat logs <deployment_id> --follow   # logs de build
+```
+
+Variáveis de ambiente no painel (`cleat env set carrinho-smart K=V`): `BETTER_AUTH_SECRET`,
+`BETTER_AUTH_URL`, `DATABASE_URL` e `SEED`.
+
+> O SQLite persiste em `/opt/carrinho-smart/data` no servidor. Para reiniciar os dados de
+> demonstração, rode `npm run db:reset` localmente antes de um deploy (ou ajuste o caminho via `DATABASE_URL`).
+
+---
+
 ## 🔍 Qualidade, CI e pre-commit
 
 - **ESLint** (flat config) com `typescript-eslint`, `react-hooks` e `react-refresh` — `npm run lint` roda com `--max-warnings 0`.
