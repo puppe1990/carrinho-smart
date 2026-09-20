@@ -29,6 +29,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "icons": "bash scripts/generate-icons.sh",
     "prepare": "husky"
   },
   "lint-staged": {

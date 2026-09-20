@@ -31,6 +31,7 @@ Construído com **TanStack Start + SQLite**, **autenticação multitenant** (Bet
 - **Tailwind CSS v4** (tokens do design system em `@theme`)
 - **Vitest** para testes
 - **[faker](https://fakerjs.dev/)** para seed determinístico
+- **PWA** (Web App Manifest + service worker) com ícones gerados a partir do logo
 - **Nitro** como servidor de produção
 
 ---
@@ -61,21 +62,22 @@ Variáveis de ambiente (`.env`):
 
 ### Scripts
 
-| Script                    | Descrição                                          |
-| ------------------------- | -------------------------------------------------- |
-| `npm run dev`             | Servidor de desenvolvimento (Vite, porta 3000).    |
-| `npm run build`           | Build de produção (Nitro, saída em `.output`).     |
-| `npm run preview`         | Pré-visualiza o build de produção.                 |
-| `npm test`                | Roda toda a suíte de testes (Vitest).              |
-| `npm run test:watch`      | Testes em modo watch.                              |
-| `npm run typecheck`       | Checagem de tipos (`tsc --noEmit`).                |
-| `npm run lint`            | ESLint (flat config) com zero warnings permitidos. |
-| `npm run lint:fix`        | ESLint aplicando correções automáticas.            |
-| `npm run format`          | Formata o projeto com Prettier.                    |
-| `npm run format:check`    | Verifica a formatação sem alterar arquivos.        |
-| `npm run seed`            | (Re)popula o banco com faker.                      |
-| `npm run db:reset`        | Apaga o banco e roda o seed novamente.             |
-| `npm run generate-routes` | Regenera o `routeTree.gen.ts`.                     |
+| Script                    | Descrição                                                            |
+| ------------------------- | -------------------------------------------------------------------- |
+| `npm run dev`             | Servidor de desenvolvimento (Vite, porta 3000).                      |
+| `npm run build`           | Build de produção (Nitro, saída em `.output`).                       |
+| `npm run preview`         | Pré-visualiza o build de produção.                                   |
+| `npm test`                | Roda toda a suíte de testes (Vitest).                                |
+| `npm run test:watch`      | Testes em modo watch.                                                |
+| `npm run typecheck`       | Checagem de tipos (`tsc --noEmit`).                                  |
+| `npm run lint`            | ESLint (flat config) com zero warnings permitidos.                   |
+| `npm run lint:fix`        | ESLint aplicando correções automáticas.                              |
+| `npm run format`          | Formata o projeto com Prettier.                                      |
+| `npm run format:check`    | Verifica a formatação sem alterar arquivos.                          |
+| `npm run seed`            | (Re)popula o banco com faker.                                        |
+| `npm run db:reset`        | Apaga o banco e roda o seed novamente.                               |
+| `npm run generate-routes` | Regenera o `routeTree.gen.ts`.                                       |
+| `npm run icons`           | Regenera favicon e ícones do PWA (requer `rsvg-convert` + `magick`). |
 
 ---
 
@@ -151,6 +153,36 @@ O modelo de tenant é **usuário individual**: cada conta enxerga apenas os pró
 - Ao criar a conta, um hook `databaseHooks.user.create.after` popula dados de demonstração **daquele usuário** (lista, carrinho e histórico), sem vazar entre contas.
 
 > Os testes cobrem o isolamento: um segundo usuário não vê carrinho, lista, compras, histórico de preços nem consegue operar sobre recursos de outro.
+
+---
+
+## 📲 PWA, favicon e ícones
+
+O app é instalável: **Web App Manifest** + **service worker** registrados na raiz.
+
+- **Manifest** em `public/manifest.json` (`display: standalone`, `theme_color`, ícones `any` e `maskable`).
+- **Service worker** (`public/sw.js`) com estratégia **cache-first para assets estáticos** (`/assets/`, `/icons/`, manifest, favicon, apple-touch-icon). Navegações e `/api/*` **nunca** são cacheadas — evitando servir HTML autenticado para quem está deslogado.
+- Registro em `src/routes/__root.tsx` (`navigator.serviceWorker.register('/sw.js')`).
+- Metadados no `<head>`: `favicon.ico`, `icon.svg`, `apple-touch-icon`, `manifest`, `theme-color` e tags `apple-mobile-web-app-*`.
+
+Os ícones vêm do **mesmo ícone exibido na tela de sign-in** (quadrado verde `#10b981 → #047857` com o carrinho branco), exportado dos SVGs `public/icon.svg` e `public/icon-maskable.svg`:
+
+| Arquivo                       | Uso                                       |
+| ----------------------------- | ----------------------------------------- |
+| `public/favicon.ico`          | Favicon (16/32/48).                       |
+| `public/icon.svg`             | Favicon vetorial / navegadores modernos.  |
+| `public/icons/icon-192.png`   | Manifest `any`.                           |
+| `public/icons/icon-512.png`   | Manifest `any` / splash.                  |
+| `public/icons/maskable-*.png` | Manifest `maskable` (Android adaptativo). |
+| `public/apple-touch-icon.png` | Ícone no iOS (180×180).                   |
+
+Para regerar após editar os SVGs (requer `librsvg` e `imagemagick`):
+
+```bash
+npm run icons
+```
+
+> **Testar a instalação:** rode `npm run build && npm run preview` e abra em `http://localhost:3000` — o navegador oferece "Instalar app".
 
 ---
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { HeadContent, Outlet, Scripts, createRootRoute, redirect } from '@tanstack/react-router'
 
 import appCss from '../styles.css?url'
@@ -32,10 +33,23 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover',
       },
       { title: 'CarrinhoSmart' },
-      { name: 'theme-color', content: '#faf8ff' },
+      {
+        name: 'description',
+        content: 'Carrinho inteligente e controle de orçamento de supermercado.',
+      },
+      { name: 'theme-color', content: '#006c49' },
+      { name: 'application-name', content: 'CarrinhoSmart' },
+      { name: 'mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-title', content: 'CarrinhoSmart' },
+      { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
+      { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+      { rel: 'manifest', href: '/manifest.json' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
       {
@@ -54,6 +68,15 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   const { user } = Route.useRouteContext()
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+    const register = () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    }
+    if (document.readyState === 'complete') register()
+    else window.addEventListener('load', register, { once: true })
+  }, [])
 
   return (
     <AuthContext.Provider value={user}>
