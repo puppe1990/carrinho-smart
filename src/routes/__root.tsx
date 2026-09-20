@@ -1,5 +1,12 @@
 import { useEffect } from 'react'
-import { HeadContent, Outlet, Scripts, createRootRoute, redirect } from '@tanstack/react-router'
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+  redirect,
+  useRouterState,
+} from '@tanstack/react-router'
 
 import appCss from '../styles.css?url'
 import { AuthContext } from '../auth/session-context'
@@ -30,7 +37,8 @@ export const Route = createRootRoute({
     if (user && isPublic) {
       throw redirect({ to: '/' })
     }
-    if (user && !isOnboarding) {
+    const isAdminPath = location.pathname.startsWith('/admin')
+    if (user && !isOnboarding && !isAdminPath) {
       const onboarding = await fetchOnboarding()
       if (!onboarding.welcomeShown) {
         throw redirect({ to: ONBOARDING_PATH })
@@ -104,6 +112,8 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   const { user } = Route.useRouteContext()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const isAdmin = pathname.startsWith('/admin')
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
@@ -116,10 +126,14 @@ function RootLayout() {
 
   return (
     <AuthContext.Provider value={user}>
-      <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-surface">
+      {isAdmin ? (
         <Outlet />
-        <BottomNav />
-      </div>
+      ) : (
+        <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-surface">
+          <Outlet />
+          <BottomNav />
+        </div>
+      )}
     </AuthContext.Provider>
   )
 }
