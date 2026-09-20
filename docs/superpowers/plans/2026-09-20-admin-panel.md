@@ -3955,3 +3955,23 @@ gh pr create --title "feat(admin): painel admin desktop" --body "Adiciona /admin
 | Testes de service, repositório e allowlist                           | 1–8         |
 | Docs/env                                                             | 19          |
 | Fora do escopo (editar usuários, papéis, upload, auditoria, estoque) | —           |
+
+---
+
+## Notas de implementação (desvios do plano original)
+
+Durante a execução, alguns ajustes foram necessários além do texto original do plano:
+
+- **Barcode `NOT NULL`**: produtos sem código recebem um código interno `INT-<10 hex>` (não `NULL`).
+- **EAN-13 de teste**: o fixture `7891000244102` era inválido; usado `7891000244104`.
+- **`Purchase`** em `admin-types.ts` importa de `src/domain/types.ts`, não de `db/models`.
+- **Preservação em updates**: campos opcionais omitidos são preservados (lojas, categorias e produtos).
+- **`AdminError`**: erros de validação/guard usam `AdminError`; falhas inesperadas são logadas e
+  retornam mensagem genérica.
+- **Categoria**: guard usa `countReferences` (produtos + itens de lista); UI mostra `referenceCount`.
+- **Índices**: adicionados índices em `product_id`/`category_id` para as consultas admin.
+- **Acessibilidade**: `SearchInput` com `aria-label`, `AdminModal` com `aria-labelledby`/backdrop
+  não focável, `Pagination` em `<nav>`.
+- **Datas**: helper `src/domain/date.ts` (`formatDate`) evita "Invalid Date" e deslocamento de dia.
+- **Busca**: `src/hooks/use-debounced-value.ts` evita request por tecla; navegação com `replace`.
+- **ESLint**: override em `src/components/admin/**` com `allowConstantExport` para as constantes de estilo.

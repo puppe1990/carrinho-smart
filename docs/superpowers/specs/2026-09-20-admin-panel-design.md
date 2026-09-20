@@ -138,8 +138,9 @@ offset })`, `count({ search })`, `get(id)`, `stats(id)` (nº de listas, carrinho
 
 Notas de modelagem de dados:
 
-- `products.barcode` é `UNIQUE`; SQLite permite múltiplos `NULL`, então barcode vazio é
-  gravado como `NULL`.
+- `products.barcode` é `TEXT NOT NULL UNIQUE`; quando o admin não informa código de barras, o
+  service gera um código interno único `INT-<10 hex>`. Quando informado, normaliza e, se tiver
+  13 dígitos, exige EAN-13 válido e unicidade.
 - `products.category_id` referencia `categories`; `carts.store_id` e `purchases.store_id`
   referenciam `stores`; tabelas de itens guardam `product_id` sem FK declarada — a checagem
   de uso é feita por `SELECT COUNT`.

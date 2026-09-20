@@ -212,6 +212,27 @@ Validação de EAN-13 (dígito verificador) e a geração de códigos válidos p
 
 ---
 
+## Painel admin
+
+Área administrativa desktop em `/admin` para gerenciar **lojas**, **produtos** e **categorias**
+(CRUD completo) e consultar **usuários** (somente leitura: listas, carrinhos e compras).
+
+O acesso é controlado por uma allowlist de e-mails na variável de ambiente `ADMIN_EMAILS`
+(CSV). Se a variável estiver ausente ou vazia, ninguém acessa o painel (fail-closed).
+
+```
+ADMIN_EMAILS=voce@exemplo.com,outro@exemplo.com
+```
+
+O usuário precisa estar autenticado com um e-mail presente na lista; caso contrário é
+redirecionado para `/`. O admin não passa pela tela de onboarding `/bem-vindo`.
+
+Regras: lojas, produtos e categorias **não podem ser excluídos quando estão em uso** (carrinhos,
+listas, compras ou histórico de preço); a UI exibe o motivo. Produtos sem código de barras recebem
+um código interno (`INT-...`).
+
+---
+
 ## 🚀 Deploy (Cleat)
 
 O projeto está publicado via **[Cleat](https://paas.gestaobem.com)** no servidor `gestaobem-cx33`:
