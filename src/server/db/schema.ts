@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS products (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 
 CREATE TABLE IF NOT EXISTS shopping_lists (
   id TEXT PRIMARY KEY,
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS list_items (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_list_items_list ON list_items(list_id);
+CREATE INDEX IF NOT EXISTS idx_list_items_product ON list_items(product_id);
 
 CREATE TABLE IF NOT EXISTS carts (
   id TEXT PRIMARY KEY,
@@ -84,6 +86,7 @@ CREATE TABLE IF NOT EXISTS cart_items (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_cart_items_cart ON cart_items(cart_id);
+CREATE INDEX IF NOT EXISTS idx_cart_items_product ON cart_items(product_id);
 
 CREATE TABLE IF NOT EXISTS purchases (
   id TEXT PRIMARY KEY,
@@ -110,6 +113,7 @@ CREATE TABLE IF NOT EXISTS purchase_items (
   was_promo INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items(purchase_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_product ON purchase_items(product_id);
 
 CREATE TABLE IF NOT EXISTS price_history (
   id TEXT PRIMARY KEY,
@@ -120,6 +124,7 @@ CREATE TABLE IF NOT EXISTS price_history (
   recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_price_history_user_product ON price_history(user_id, product_id);
+CREATE INDEX IF NOT EXISTS idx_price_history_product ON price_history(product_id);
 
 CREATE TABLE IF NOT EXISTS user_preferences (
   user_id TEXT PRIMARY KEY,

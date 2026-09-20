@@ -446,8 +446,13 @@ describe('product repository (admin)', () => {
     expect(repo.products.get('prod-1')?.priceCents).toBe(2590)
   })
 
-  it('conta uso do produto em itens e histórico', () => {
+  it('conta uso do produto em carrinho, lista, compra e histórico', () => {
     seedProduct()
+
+    repo.lists.create({ userId: USER, name: 'Semana', shoppingDate: '2026-09-01' })
+    const list = repo.lists.getActive(USER)!
+    repo.lists.addItem(list.id, { productId: 'prod-1', name: 'Café', categoryId: 'mercearia' })
+
     const cart = repo.carts.getOrCreateActive({ userId: USER, storeId: 'store-1' })
     repo.carts.addLine(cart.id, {
       productId: 'prod-1',
@@ -455,8 +460,39 @@ describe('product repository (admin)', () => {
       categoryId: 'mercearia',
       unitPriceCents: 1000,
     })
-    expect(repo.products.countUsage('prod-1')).toBe(1)
-    expect(repo.products.adminGet('prod-1')?.usageCount).toBe(1)
+
+    repo.purchases.create(
+      {
+        userId: USER,
+        storeId: 'store-1',
+        budgetCents: 1000,
+        totalCents: 1000,
+        savingsCents: 0,
+        itemCount: 1,
+        purchasedAt: '2026-09-01T10:00:00.000Z',
+      },
+      [
+        {
+          productId: 'prod-1',
+          name: 'Café',
+          categoryId: 'mercearia',
+          unitPriceCents: 1000,
+          quantity: 1,
+          totalCents: 1000,
+          wasPromo: false,
+        },
+      ],
+    )
+
+    repo.priceHistory.record({
+      userId: USER,
+      productId: 'prod-1',
+      storeId: 'store-1',
+      priceCents: 1000,
+    })
+
+    expect(repo.products.countUsage('prod-1')).toBe(4)
+    expect(repo.products.adminGet('prod-1')?.usageCount).toBe(4)
   })
 
   it('lista e filtra produtos com nome da categoria', () => {
