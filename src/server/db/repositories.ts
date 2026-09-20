@@ -131,8 +131,8 @@ function toAdminCategoryRecord(row: any): AdminCategoryRecord {
     name: row.name,
     icon: row.icon,
     color: row.color,
-    productCount: row.product_count,
-    referenceCount: row.product_count + row.list_item_count,
+    productCount: row.product_count ?? 0,
+    referenceCount: (row.product_count ?? 0) + (row.list_item_count ?? 0),
   }
 }
 

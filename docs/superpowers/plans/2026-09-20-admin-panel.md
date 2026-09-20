@@ -1198,7 +1198,7 @@ describe('admin categories', () => {
     expect(repo.categories.get('mercearia')).toBeNull()
   })
 
-  it('lista categorias com contagem de produtos', () => {
+  it('lista categorias com contagem de referências', () => {
     expect(listCategories(repo).map((c) => c.referenceCount)).toContain(0)
   })
 })

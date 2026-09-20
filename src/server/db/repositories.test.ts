@@ -382,10 +382,14 @@ describe('category repository (admin)', () => {
 
     repo.lists.create({ userId: USER, name: 'Semana', shoppingDate: '2026-09-01' })
     const list = repo.lists.getActive(USER)!
+    repo.lists.addItem(list.id, { name: 'Café avulso', categoryId: 'mercearia' })
+    expect(repo.categories.adminGet('mercearia')?.productCount).toBe(1)
+    expect(repo.categories.adminGet('mercearia')?.referenceCount).toBe(2)
+    expect(repo.categories.countReferences('mercearia')).toBe(2)
+
     repo.lists.addItem(list.id, { name: 'Item avulso', categoryId: 'laticinios' })
     expect(repo.categories.adminGet('laticinios')?.productCount).toBe(0)
     expect(repo.categories.adminGet('laticinios')?.referenceCount).toBe(1)
-    expect(repo.categories.countReferences('laticinios')).toBe(1)
   })
 })
 
