@@ -529,9 +529,11 @@ function seedUser(id: string, name: string, email: string) {
 }
 
 describe('user repository (admin)', () => {
-  it('lista usuários com contagens e total gasto', () => {
+  it('lista usuários com contagens e total gasto isolados por usuário', () => {
     seedUser('u1', 'Ana', 'ana@x.dev')
+    seedUser('u2', 'Bruno', 'bruno@x.dev')
     repo.lists.create({ userId: 'u1', name: 'Semana', shoppingDate: '2026-09-01' })
+    repo.carts.getOrCreateActive({ userId: 'u1', storeId: 'store-1' })
     repo.purchases.create({
       userId: 'u1',
       storeId: 'store-1',
@@ -541,14 +543,28 @@ describe('user repository (admin)', () => {
       itemCount: 2,
       purchasedAt: '2026-09-01T10:00:00.000Z',
     })
-    const [user] = repo.users.list({})
-    expect(user).toMatchObject({
+    repo.purchases.create({
+      userId: 'u2',
+      storeId: 'store-1',
+      budgetCents: 10000,
+      totalCents: 9000,
+      savingsCents: 0,
+      itemCount: 3,
+      purchasedAt: '2026-09-02T10:00:00.000Z',
+    })
+
+    expect(repo.users.list({})).toHaveLength(2)
+    expect(repo.users.get('u1')).toMatchObject({
       id: 'u1',
       email: 'ana@x.dev',
       listCount: 1,
+      cartCount: 1,
       purchaseCount: 1,
       totalSpentCents: 5000,
     })
+    expect(repo.users.get('u2')?.totalSpentCents).toBe(9000)
+    expect(repo.users.get('u2')?.listCount).toBe(0)
+    expect(repo.users.get('u2')?.cartCount).toBe(0)
     expect(repo.users.count({ search: 'ana' })).toBe(1)
   })
 

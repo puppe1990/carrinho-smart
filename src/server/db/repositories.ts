@@ -206,7 +206,10 @@ function toAdminPurchaseRecord(row: any): AdminPurchaseRecord {
 function userFilter(filter: { search?: string }): { clause: string; params: unknown[] } {
   if (!filter.search) return { clause: '', params: [] }
   const term = `%${filter.search.toLowerCase()}%`
-  return { clause: 'WHERE lower(u.name) LIKE ? OR lower(u.email) LIKE ?', params: [term, term] }
+  return {
+    clause: 'WHERE (lower(u.name) LIKE ? OR lower(u.email) LIKE ?)',
+    params: [term, term],
+  }
 }
 
 export function createRepository(db: Database) {
@@ -982,7 +985,7 @@ export function createRepository(db: Database) {
               (SELECT COUNT(*) FROM purchases p WHERE p.user_id = u.id) AS purchase_count,
               (SELECT COALESCE(SUM(p.total_cents), 0) FROM purchases p WHERE p.user_id = u.id) AS total_spent_cents
              FROM "user" u ${clause}
-             ORDER BY u.createdAt DESC LIMIT ? OFFSET ?`,
+             ORDER BY u.createdAt DESC, u.id DESC LIMIT ? OFFSET ?`,
           )
           .all(...params, filter.limit ?? 50, filter.offset ?? 0) as any[]
       ).map(toAdminUserRecord)
