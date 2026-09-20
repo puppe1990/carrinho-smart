@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useId, type ReactNode } from 'react'
 import { Icon } from '../Icon'
 
 export const adminInputClass =
@@ -61,6 +61,7 @@ export function SearchInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder ?? 'Buscar...'}
+        aria-label={placeholder ?? 'Buscar'}
         className={`${adminInputClass} pl-9`}
       />
     </div>
@@ -104,25 +105,27 @@ export function AdminTable({
 }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-outline-variant/30 bg-surface-container-low">
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  className={`px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ${
-                    column.align === 'right' ? 'text-right' : ''
-                  }`}
-                >
-                  {column.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>{children}</tbody>
-        </table>
-      </div>
+      {!empty && (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-outline-variant/30 bg-surface-container-low">
+                {columns.map((column) => (
+                  <th
+                    key={column.key}
+                    className={`px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ${
+                      column.align === 'right' ? 'text-right' : ''
+                    }`}
+                  >
+                    {column.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>{children}</tbody>
+          </table>
+        </div>
+      )}
       {empty && (
         <div className="p-8 text-center text-sm text-on-surface-variant">Nenhum registro.</div>
       )}
@@ -165,7 +168,10 @@ export function Pagination({
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize))
   return (
-    <div className="mt-4 flex items-center justify-between text-sm text-on-surface-variant">
+    <nav
+      aria-label="Paginação"
+      className="mt-4 flex items-center justify-between text-sm text-on-surface-variant"
+    >
       <span>
         {total} registro(s) · página {page} de {pages}
       </span>
@@ -187,7 +193,7 @@ export function Pagination({
           Próxima
         </button>
       </div>
-    </div>
+    </nav>
   )
 }
 
@@ -213,21 +219,27 @@ export function AdminModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  const titleId = useId()
+
   if (!open) return null
   return (
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center p-4"
       role="dialog"
       aria-modal
+      aria-labelledby={titleId}
     >
       <button
         type="button"
+        tabIndex={-1}
         aria-label="Fechar"
         className="absolute inset-0 cursor-default bg-inverse-surface/40 backdrop-blur-sm"
         onClick={onClose}
       />
       <div className="relative w-full max-w-lg rounded-2xl bg-surface-container-lowest p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-on-surface">{title}</h2>
+        <h2 id={titleId} className="text-lg font-bold text-on-surface">
+          {title}
+        </h2>
         <div className="mt-4 flex flex-col gap-4">{children}</div>
         {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
       </div>
