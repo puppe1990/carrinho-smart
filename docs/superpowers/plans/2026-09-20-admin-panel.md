@@ -1850,8 +1850,7 @@ Create `src/server/functions/admin.ts`:
 
 ```ts
 import { createServerFn } from '@tanstack/react-start'
-import { isAdminEmail, requireAdmin } from '../auth/admin'
-import { getCurrentUser } from '../auth/session'
+import { getAdminSession, requireAdmin } from '../auth/admin'
 import type { AdminCategoryRecord, AdminProductRecord, AdminStoreRecord } from '../db/models'
 import {
   createCategory,
@@ -1882,10 +1881,7 @@ function toResult<T>(fn: () => T): AdminResult<T> {
   }
 }
 
-export const fetchAdminSession = createServerFn({ method: 'GET' }).handler(async () => {
-  const user = await getCurrentUser()
-  return { user, isAdmin: isAdminEmail(user?.email) }
-})
+export const fetchAdminSession = createServerFn({ method: 'GET' }).handler(() => getAdminSession())
 
 export const fetchAdminOverview = createServerFn({ method: 'GET' }).handler(async () => {
   const { repo } = await requireAdmin()
