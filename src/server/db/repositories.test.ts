@@ -8,8 +8,18 @@ let repo: Repository
 beforeEach(() => {
   db = createDatabase(':memory:')
   repo = createRepository(db)
-  repo.categories.upsert({ id: 'mercearia', name: 'Mercearia', icon: 'local_cafe', color: 'primary' })
-  repo.categories.upsert({ id: 'laticinios', name: 'Laticínios', icon: 'water_drop', color: 'secondary' })
+  repo.categories.upsert({
+    id: 'mercearia',
+    name: 'Mercearia',
+    icon: 'local_cafe',
+    color: 'primary',
+  })
+  repo.categories.upsert({
+    id: 'laticinios',
+    name: 'Laticínios',
+    icon: 'water_drop',
+    color: 'secondary',
+  })
   repo.stores.insert({ id: 'store-1', name: 'Pão de Açúcar - Morumbi', city: 'São Paulo' })
 })
 
@@ -39,9 +49,7 @@ describe('schema', () => {
 describe('product repository', () => {
   it('finds a product by barcode', () => {
     seedProduct()
-    expect(repo.products.findByBarcode('7891000244102')?.name).toBe(
-      'Café Torrado Especial 500g',
-    )
+    expect(repo.products.findByBarcode('7891000244102')?.name).toBe('Café Torrado Especial 500g')
   })
 
   it('returns null for unknown barcodes', () => {
@@ -249,8 +257,18 @@ describe('purchase repository', () => {
 describe('price history repository', () => {
   it('returns the most recent price first', () => {
     seedProduct()
-    repo.priceHistory.record({ productId: 'prod-1', storeId: 'store-1', priceCents: 3650, recordedAt: '2024-05-01T10:00:00.000Z' })
-    repo.priceHistory.record({ productId: 'prod-1', storeId: 'store-1', priceCents: 3890, recordedAt: '2024-05-24T10:00:00.000Z' })
+    repo.priceHistory.record({
+      productId: 'prod-1',
+      storeId: 'store-1',
+      priceCents: 3650,
+      recordedAt: '2024-05-01T10:00:00.000Z',
+    })
+    repo.priceHistory.record({
+      productId: 'prod-1',
+      storeId: 'store-1',
+      priceCents: 3890,
+      recordedAt: '2024-05-24T10:00:00.000Z',
+    })
     expect(repo.priceHistory.lastForProduct('prod-1')?.priceCents).toBe(3890)
     expect(repo.priceHistory.historyForProduct('prod-1')).toHaveLength(2)
   })

@@ -17,7 +17,11 @@ export function ProgressBar({
   className?: string
 }) {
   const toneClass =
-    tone === 'primary' ? 'bg-primary-container' : tone === 'secondary' ? 'bg-secondary-container' : 'bg-error'
+    tone === 'primary'
+      ? 'bg-primary-container'
+      : tone === 'secondary'
+        ? 'bg-secondary-container'
+        : 'bg-error'
   return (
     <div className={`w-full overflow-hidden rounded-full bg-surface-container-high ${className}`}>
       <div
@@ -53,13 +57,7 @@ export function SegmentedBudgetBar({
   )
 }
 
-export function ProgressRing({
-  percent,
-  label,
-}: {
-  percent: number
-  label: ReactNode
-}) {
+export function ProgressRing({ percent, label }: { percent: number; label: ReactNode }) {
   const circumference = 125.6
   const offset = circumference * (1 - clamp(percent) / 100)
   return (

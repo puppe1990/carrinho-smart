@@ -115,7 +115,10 @@ function HistoryPage() {
                 </div>
               </div>
               <Badge tone={overview.withinBudget ? 'primary' : 'error'}>
-                <Icon name={overview.withinBudget ? 'trending_down' : 'trending_up'} className="text-[14px]" />
+                <Icon
+                  name={overview.withinBudget ? 'trending_down' : 'trending_up'}
+                  className="text-[14px]"
+                />
                 {formatPercent(overview.usedPercent)} da meta
               </Badge>
             </div>
@@ -126,7 +129,9 @@ function HistoryPage() {
                   <Icon name="tune" className="text-[15px] text-tertiary" />
                   Meta: {formatBRL(overview.budgetCents)}
                 </span>
-                <span className="font-bold text-primary">{formatPercent(overview.usedPercent)} utilizado</span>
+                <span className="font-bold text-primary">
+                  {formatPercent(overview.usedPercent)} utilizado
+                </span>
               </div>
               <ProgressBar
                 percent={overview.usedPercent}
@@ -136,7 +141,9 @@ function HistoryPage() {
               <div className="mt-1.5 flex items-center justify-between text-[11px] text-on-surface-variant">
                 <span>
                   Restante:{' '}
-                  <strong className="font-semibold text-on-surface">{formatBRL(overview.remainingCents)}</strong>
+                  <strong className="font-semibold text-on-surface">
+                    {formatBRL(overview.remainingCents)}
+                  </strong>
                 </span>
                 <span className="flex items-center gap-0.5 font-semibold text-primary">
                   <Icon name="check_circle" className="text-[12px]" />
@@ -151,7 +158,9 @@ function HistoryPage() {
                   <Icon name="savings" className="text-[18px]" />
                 </div>
                 <div className="min-w-0">
-                  <span className="block text-[10px] uppercase text-on-surface-variant">Economizado</span>
+                  <span className="block text-[10px] uppercase text-on-surface-variant">
+                    Economizado
+                  </span>
                   <span className="tnum text-sm font-bold text-tertiary">
                     {formatBRL(overview.savingsCents)}
                   </span>
@@ -162,8 +171,12 @@ function HistoryPage() {
                   <Icon name="local_mall" className="text-[18px]" />
                 </div>
                 <div className="min-w-0">
-                  <span className="block text-[10px] uppercase text-on-surface-variant">Frequência</span>
-                  <span className="text-sm font-bold text-on-surface">{overview.count} compras</span>
+                  <span className="block text-[10px] uppercase text-on-surface-variant">
+                    Frequência
+                  </span>
+                  <span className="text-sm font-bold text-on-surface">
+                    {overview.count} compras
+                  </span>
                 </div>
               </div>
             </div>
@@ -172,7 +185,10 @@ function HistoryPage() {
 
         <div className="flex flex-col gap-2">
           <div className="relative flex items-center">
-            <Icon name="search" className="pointer-events-none absolute left-3.5 text-[20px] text-on-surface-variant" />
+            <Icon
+              name="search"
+              className="pointer-events-none absolute left-3.5 text-[20px] text-on-surface-variant"
+            />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -242,7 +258,9 @@ function HistoryPage() {
                       </div>
                     </div>
                     <Badge tone={within ? 'primary' : 'error'}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${within ? 'bg-primary' : 'bg-error'}`} />
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${within ? 'bg-primary' : 'bg-error'}`}
+                      />
                       {within ? 'Dentro da meta' : 'Acima da meta'}
                     </Badge>
                   </div>
@@ -258,7 +276,9 @@ function HistoryPage() {
                           <Icon name="local_offer" className="text-[12px]" />
                           Economia: {formatBRL(purchase.savingsCents)}
                         </span>
-                        <span className="text-[10px] text-outline">Meta {formatBRL(purchase.budgetCents)}</span>
+                        <span className="text-[10px] text-outline">
+                          Meta {formatBRL(purchase.budgetCents)}
+                        </span>
                       </div>
                     </div>
                     <div className="shrink-0 text-right">

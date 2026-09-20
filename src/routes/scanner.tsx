@@ -369,7 +369,11 @@ function ScannerPage() {
               : 'bg-primary-container text-on-primary-container shadow-lg'
           }`}
         >
-          <Icon name={saved ? 'done_all' : 'shopping_cart_checkout'} className="text-[22px]" filled />
+          <Icon
+            name={saved ? 'done_all' : 'shopping_cart_checkout'}
+            className="text-[22px]"
+            filled
+          />
           {saved ? 'Item adicionado!' : `Adicionar ao carrinho (+ ${formatBRL(subtotalCents)})`}
         </button>
       </div>

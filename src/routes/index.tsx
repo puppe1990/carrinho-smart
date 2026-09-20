@@ -74,7 +74,8 @@ function CartPage() {
     }
   }
 
-  const gaugeTone = budget.level === 'over' ? 'error' : budget.level === 'warning' ? 'secondary' : 'primary'
+  const gaugeTone =
+    budget.level === 'over' ? 'error' : budget.level === 'warning' ? 'secondary' : 'primary'
 
   return (
     <div className="flex min-h-screen flex-col pb-32">
@@ -133,7 +134,10 @@ function CartPage() {
                 {formatPercent(budget.percent)} do teto planejado
               </span>
               <span className="text-on-surface-variant">
-                Restam <strong className="font-bold text-on-surface">{formatBRL(budget.remainingCents)}</strong>
+                Restam{' '}
+                <strong className="font-bold text-on-surface">
+                  {formatBRL(budget.remainingCents)}
+                </strong>
               </span>
             </div>
           </div>
@@ -338,8 +342,10 @@ function CartPage() {
                 Item extra detectado
               </span>
               <p className="mt-0.5 text-[11px] text-on-surface-variant">
-                Você bipou <strong className="text-on-surface">{tip.extraCount} item(ns) fora do plano</strong>,
-                impacto de <strong className="text-on-surface">{formatBRL(tip.extraImpactCents)}</strong> no
+                Você bipou{' '}
+                <strong className="text-on-surface">{tip.extraCount} item(ns) fora do plano</strong>
+                , impacto de{' '}
+                <strong className="text-on-surface">{formatBRL(tip.extraImpactCents)}</strong> no
                 orçamento final.
               </p>
             </div>
@@ -421,7 +427,9 @@ function CartPage() {
                 <span className="block text-sm font-semibold text-on-surface">{store.name}</span>
                 <span className="text-[11px] text-on-surface-variant">{store.city}</span>
               </div>
-              {store.id === data.store?.id && <Icon name="check_circle" className="text-primary" filled />}
+              {store.id === data.store?.id && (
+                <Icon name="check_circle" className="text-primary" filled />
+              )}
             </button>
           ))}
         </div>
@@ -443,7 +451,9 @@ function CartPage() {
           onClick={async () => {
             const cents = Math.round(Number(budgetDraft.replace(',', '.')) * 100)
             if (Number.isFinite(cents) && cents > 0) {
-              await mutate(() => changeBudget({ data: { cartId: data.cart.id, budgetCents: cents } }))
+              await mutate(() =>
+                changeBudget({ data: { cartId: data.cart.id, budgetCents: cents } }),
+              )
             }
             setSheet(null)
           }}

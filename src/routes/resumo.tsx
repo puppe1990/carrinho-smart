@@ -22,7 +22,7 @@ export const Route = createFileRoute('/resumo')({
   loaderDeps: ({ search }) => ({ year: search.year, month: search.month }),
   loader: async ({ deps }) => {
     const [months, cart] = await Promise.all([fetchMonths(), fetchCartOverview({ data: {} })])
-    const list = (months as MonthRef[])
+    const list = months as MonthRef[]
     const target =
       list.find((month) => month.year === deps.year && month.month === deps.month) ?? list[0]
     const summary = await fetchMonthSummary({
@@ -53,7 +53,9 @@ function SummaryPage() {
               type="button"
               aria-label="Mês anterior"
               disabled={!older}
-              onClick={() => older && navigate({ search: { year: older.year, month: older.month } })}
+              onClick={() =>
+                older && navigate({ search: { year: older.year, month: older.month } })
+              }
               className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-container text-on-surface-variant active:scale-90 disabled:opacity-30"
             >
               <Icon name="chevron_left" className="text-[20px]" />
@@ -63,7 +65,9 @@ function SummaryPage() {
               type="button"
               aria-label="Próximo mês"
               disabled={!newer}
-              onClick={() => newer && navigate({ search: { year: newer.year, month: newer.month } })}
+              onClick={() =>
+                newer && navigate({ search: { year: newer.year, month: newer.month } })
+              }
               className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-container text-on-surface-variant active:scale-90 disabled:opacity-30"
             >
               <Icon name="chevron_right" className="text-[20px]" />
@@ -144,8 +148,12 @@ function SummaryPage() {
                       <Icon name="shopping_bag" className="text-[18px]" />
                     </div>
                     <div className="min-w-0">
-                      <span className="block text-[10px] uppercase text-on-surface-variant">Itens</span>
-                      <span className="text-sm font-bold text-on-surface">{summary.items.length} produtos</span>
+                      <span className="block text-[10px] uppercase text-on-surface-variant">
+                        Itens
+                      </span>
+                      <span className="text-sm font-bold text-on-surface">
+                        {summary.items.length} produtos
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 rounded-lg bg-surface-container p-3">
@@ -153,7 +161,9 @@ function SummaryPage() {
                       <Icon name="local_offer" className="text-[18px]" />
                     </div>
                     <div className="min-w-0">
-                      <span className="block text-[10px] uppercase text-on-surface-variant">Descontos</span>
+                      <span className="block text-[10px] uppercase text-on-surface-variant">
+                        Descontos
+                      </span>
                       <span className="tnum text-sm font-bold text-primary">
                         {formatBRL(summary.overview.savingsCents)}
                       </span>
@@ -216,7 +226,9 @@ function SummaryPage() {
                         <span className="block truncate text-sm font-bold text-on-surface">
                           {slice.name}
                         </span>
-                        <span className="text-[11px] text-on-surface-variant">{slice.count} itens</span>
+                        <span className="text-[11px] text-on-surface-variant">
+                          {slice.count} itens
+                        </span>
                       </div>
                     </div>
                     <div className="shrink-0 text-right">

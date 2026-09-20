@@ -235,14 +235,19 @@ export function createRepository(db: Database) {
       const existing = carts.getActive(input.storeId)
       if (existing) return existing
       const id = uuid()
-      db.prepare(
-        'INSERT INTO carts (id, store_id, list_id, budget_cents) VALUES (?, ?, ?, ?)',
-      ).run(id, input.storeId, input.listId ?? null, input.budgetCents ?? 0)
+      db.prepare('INSERT INTO carts (id, store_id, list_id, budget_cents) VALUES (?, ?, ?, ?)').run(
+        id,
+        input.storeId,
+        input.listId ?? null,
+        input.budgetCents ?? 0,
+      )
       return carts.get(id)!
     },
     getActive(storeId: string): Cart | null {
       const row = db
-        .prepare("SELECT * FROM carts WHERE status = 'active' AND store_id = ? ORDER BY created_at DESC LIMIT 1")
+        .prepare(
+          "SELECT * FROM carts WHERE status = 'active' AND store_id = ? ORDER BY created_at DESC LIMIT 1",
+        )
         .get(storeId) as any
       return row ? toCart(row) : null
     },
@@ -295,8 +300,7 @@ export function createRepository(db: Database) {
     },
     cartIdForLine(lineId: string): string | null {
       const row = db.prepare('SELECT cart_id FROM cart_items WHERE id = ?').get(lineId) as
-        | { cart_id: string }
-        | undefined
+        { cart_id: string } | undefined
       return row?.cart_id ?? null
     },
     updateQuantity(lineId: string, quantity: number): CartLine {
@@ -383,7 +387,12 @@ export function createRepository(db: Database) {
   }
 
   const lists = {
-    create(input: { id?: string; name: string; shoppingDate: string; budgetCents?: number }): ShoppingList {
+    create(input: {
+      id?: string
+      name: string
+      shoppingDate: string
+      budgetCents?: number
+    }): ShoppingList {
       const id = input.id ?? uuid()
       db.prepare(
         'INSERT INTO shopping_lists (id, name, shopping_date, budget_cents) VALUES (?, ?, ?, ?)',
@@ -396,7 +405,9 @@ export function createRepository(db: Database) {
     },
     getActive(): ShoppingList | null {
       const row = db
-        .prepare("SELECT * FROM shopping_lists WHERE status = 'active' ORDER BY created_at DESC LIMIT 1")
+        .prepare(
+          "SELECT * FROM shopping_lists WHERE status = 'active' ORDER BY created_at DESC LIMIT 1",
+        )
         .get() as any
       return row ? toShoppingList(row) : null
     },
@@ -428,8 +439,7 @@ export function createRepository(db: Database) {
     },
     listIdForItem(itemId: string): string | null {
       const row = db.prepare('SELECT list_id FROM list_items WHERE id = ?').get(itemId) as
-        | { list_id: string }
-        | undefined
+        { list_id: string } | undefined
       return row?.list_id ?? null
     },
     listItems(listId: string): ListItem[] {
@@ -565,7 +575,9 @@ export function createRepository(db: Database) {
             )
             .get(productId, storeId) as any)
         : (db
-            .prepare('SELECT * FROM price_history WHERE product_id = ? ORDER BY recorded_at DESC LIMIT 1')
+            .prepare(
+              'SELECT * FROM price_history WHERE product_id = ? ORDER BY recorded_at DESC LIMIT 1',
+            )
             .get(productId) as any)
       return row ? toPriceEntry(row) : null
     },

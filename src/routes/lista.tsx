@@ -14,10 +14,7 @@ import {
 
 export const Route = createFileRoute('/lista')({
   loader: async () => {
-    const [list, cart] = await Promise.all([
-      fetchShoppingList(),
-      fetchCartOverview({ data: {} }),
-    ])
+    const [list, cart] = await Promise.all([fetchShoppingList(), fetchCartOverview({ data: {} })])
     return { list, cart }
   },
   component: ShoppingListPage,
@@ -113,10 +110,16 @@ function ShoppingListPage() {
               </div>
               <div className="mt-2 flex items-center justify-between text-[11px] text-on-surface-variant">
                 <span>
-                  Previsto: <strong className="font-semibold text-on-surface">{formatBRL(progress.expectedTotalCents)}</strong>
+                  Previsto:{' '}
+                  <strong className="font-semibold text-on-surface">
+                    {formatBRL(progress.expectedTotalCents)}
+                  </strong>
                 </span>
                 <span>
-                  Atual: <strong className="font-bold text-primary">{formatBRL(progress.scannedTotalCents)}</strong>
+                  Atual:{' '}
+                  <strong className="font-bold text-primary">
+                    {formatBRL(progress.scannedTotalCents)}
+                  </strong>
                 </span>
               </div>
             </div>
@@ -131,7 +134,9 @@ function ShoppingListPage() {
             placeholder="Adicionar item à lista..."
             onKeyDown={async (event) => {
               if (event.key === 'Enter' && quickName.trim() && list.list) {
-                await mutate(() => createQuickItem({ data: { listId: list.list!.id, name: quickName } }))
+                await mutate(() =>
+                  createQuickItem({ data: { listId: list.list!.id, name: quickName } }),
+                )
                 setQuickName('')
               }
             }}
@@ -150,7 +155,9 @@ function ShoppingListPage() {
             disabled={!quickName.trim() || !list.list}
             onClick={async () => {
               if (!list.list) return
-              await mutate(() => createQuickItem({ data: { listId: list.list!.id, name: quickName } }))
+              await mutate(() =>
+                createQuickItem({ data: { listId: list.list!.id, name: quickName } }),
+              )
               setQuickName('')
             }}
             className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-container text-on-primary shadow-sm active:scale-90 disabled:opacity-50"
@@ -170,8 +177,8 @@ function ShoppingListPage() {
               </span>
               <p className="mt-0.5 text-[11px] text-on-surface-variant">
                 {cart.tip.extraCount} item(ns) fora do plano, impacto de{' '}
-                <strong className="text-on-surface">{formatBRL(cart.tip.extraImpactCents)}</strong> no
-                orçamento.
+                <strong className="text-on-surface">{formatBRL(cart.tip.extraImpactCents)}</strong>{' '}
+                no orçamento.
               </p>
             </div>
           </section>
@@ -309,7 +316,11 @@ function ShoppingListPage() {
         </button>
       </div>
 
-      <Sheet open={scanTarget !== null} onClose={() => setScanTarget(null)} title={scanTarget?.name ?? ''}>
+      <Sheet
+        open={scanTarget !== null}
+        onClose={() => setScanTarget(null)}
+        title={scanTarget?.name ?? ''}
+      >
         <p className="mb-3 text-xs text-on-surface-variant">
           Confirme o preço e a quantidade para adicionar o item ao carrinho.
         </p>

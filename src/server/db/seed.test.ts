@@ -56,7 +56,9 @@ describe('seedDatabase', () => {
     seedDatabase(db, { seed: 7 })
     seedDatabase(other, { seed: 7 })
     expect(repo.products.list().map((p) => p.name)).toEqual(
-      createRepository(other).products.list().map((p) => p.name),
+      createRepository(other)
+        .products.list()
+        .map((p) => p.name),
     )
   })
 

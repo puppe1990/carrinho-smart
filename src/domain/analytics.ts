@@ -23,10 +23,7 @@ export interface PriceTrend {
   percent: number
 }
 
-export type DistributableLine = Pick<
-  CartLine,
-  'categoryId' | 'unitPriceCents' | 'quantity'
->
+export type DistributableLine = Pick<CartLine, 'categoryId' | 'unitPriceCents' | 'quantity'>
 
 export function categoryDistribution(lines: DistributableLine[]): CategorySlice[] {
   const buckets = new Map<string, { totalCents: number; count: number }>()

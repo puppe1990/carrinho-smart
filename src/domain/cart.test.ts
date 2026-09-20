@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CartLine, ListItem } from './types'
-import {
-  cartSummary,
-  changedQuantity,
-  detectExtraItems,
-  lineTotalCents,
-} from './cart'
+import { cartSummary, changedQuantity, detectExtraItems, lineTotalCents } from './cart'
 
 function line(overrides: Partial<CartLine>): CartLine {
   return {
@@ -94,13 +89,10 @@ describe('detectExtraItems', () => {
   ]
 
   it('returns cart lines that were not planned on the list', () => {
-    const extra = detectExtraItems(
-      listItems,
-      [
-        line({ id: 'scan-1', listItemId: 'li-1' }),
-        line({ id: 'scan-2', listItemId: null, name: 'Chocolate' }),
-      ],
-    )
+    const extra = detectExtraItems(listItems, [
+      line({ id: 'scan-1', listItemId: 'li-1' }),
+      line({ id: 'scan-2', listItemId: null, name: 'Chocolate' }),
+    ])
     expect(extra.map((l) => l.id)).toEqual(['scan-2'])
   })
 

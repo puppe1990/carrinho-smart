@@ -80,11 +80,21 @@ const PRODUCT_TEMPLATES: ProductTemplate[] = [
   { name: 'Feijão Carioca 1kg', categoryId: 'mercearia', unit: 'un', basePriceCents: 890 },
   { name: 'Açúcar Refinado 1kg', categoryId: 'mercearia', unit: 'un', basePriceCents: 549 },
   { name: 'Óleo de Soja 900ml', categoryId: 'mercearia', unit: 'un', basePriceCents: 749 },
-  { name: 'Azeite de Oliva Extra Virgem 500ml', categoryId: 'mercearia', unit: 'un', basePriceCents: 4190 },
+  {
+    name: 'Azeite de Oliva Extra Virgem 500ml',
+    categoryId: 'mercearia',
+    unit: 'un',
+    basePriceCents: 4190,
+  },
   { name: 'Macarrão Espaguete 500g', categoryId: 'mercearia', unit: 'un', basePriceCents: 459 },
   { name: 'Molho de Tomate 340g', categoryId: 'mercearia', unit: 'un', basePriceCents: 329 },
   { name: 'Leite Integral Orgânico 1L', categoryId: 'laticinios', unit: 'un', basePriceCents: 549 },
-  { name: 'Queijo Mussarela Fatiado 400g', categoryId: 'laticinios', unit: 'un', basePriceCents: 2250 },
+  {
+    name: 'Queijo Mussarela Fatiado 400g',
+    categoryId: 'laticinios',
+    unit: 'un',
+    basePriceCents: 2250,
+  },
   { name: 'Iogurte Natural 170g', categoryId: 'laticinios', unit: 'un', basePriceCents: 400 },
   { name: 'Manteiga com Sal 200g', categoryId: 'laticinios', unit: 'un', basePriceCents: 1290 },
   { name: 'Requeijão Cremoso 200g', categoryId: 'laticinios', unit: 'un', basePriceCents: 890 },
@@ -94,7 +104,12 @@ const PRODUCT_TEMPLATES: ProductTemplate[] = [
   { name: 'Alface Crespa', categoryId: 'hortifruti', unit: 'un', basePriceCents: 399 },
   { name: 'Cenoura', categoryId: 'hortifruti', unit: 'kg', basePriceCents: 549 },
   { name: 'Batata Inglesa', categoryId: 'hortifruti', unit: 'kg', basePriceCents: 599 },
-  { name: 'Detergente Lava-Louças Maçã 500ml', categoryId: 'limpeza', unit: 'un', basePriceCents: 289 },
+  {
+    name: 'Detergente Lava-Louças Maçã 500ml',
+    categoryId: 'limpeza',
+    unit: 'un',
+    basePriceCents: 289,
+  },
   { name: 'Sabão Líquido Concentrado 3L', categoryId: 'limpeza', unit: 'un', basePriceCents: 3890 },
   { name: 'Desinfetante Lavanda 1L', categoryId: 'limpeza', unit: 'un', basePriceCents: 799 },
   { name: 'Papel Toalha 2 rolos', categoryId: 'limpeza', unit: 'un', basePriceCents: 690 },
@@ -169,11 +184,19 @@ export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResul
       categoryId: product.categoryId,
       aisle: product.aisle,
       expectedPriceCents: product.priceCents,
-      quantity: product.unit === 'kg' ? faker.number.float({ min: 0.4, max: 1.8, fractionDigits: 3 }) : faker.number.int({ min: 1, max: 3 }),
+      quantity:
+        product.unit === 'kg'
+          ? faker.number.float({ min: 0.4, max: 1.8, fractionDigits: 3 })
+          : faker.number.int({ min: 1, max: 3 }),
     })),
   )
   repo.lists.addItems(activeList.id, [
-    { name: 'Chocolate Amargo 70%', categoryId: 'mercearia', aisle: 'Corredor 3 (Mercearia)', expectedPriceCents: 990 },
+    {
+      name: 'Chocolate Amargo 70%',
+      categoryId: 'mercearia',
+      aisle: 'Corredor 3 (Mercearia)',
+      expectedPriceCents: 990,
+    },
     { name: 'Flores para a casa', categoryId: null, aisle: null, expectedPriceCents: 2500 },
   ])
 
@@ -215,14 +238,23 @@ export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResul
   for (let monthOffset = 3; monthOffset >= 1; monthOffset -= 1) {
     const purchasesThisMonth = faker.number.int({ min: 1, max: 3 })
     for (let i = 0; i < purchasesThisMonth; i += 1) {
-      const date = new Date(now.getFullYear(), now.getMonth() - monthOffset, faker.number.int({ min: 2, max: 26 }), faker.number.int({ min: 9, max: 20 }), faker.number.int({ min: 0, max: 59 }))
+      const date = new Date(
+        now.getFullYear(),
+        now.getMonth() - monthOffset,
+        faker.number.int({ min: 2, max: 26 }),
+        faker.number.int({ min: 9, max: 20 }),
+        faker.number.int({ min: 0, max: 59 }),
+      )
       const store = faker.helpers.arrayElement(STORES)
       const chosen = faker.helpers.arrayElements(products, faker.number.int({ min: 5, max: 11 }))
 
       let totalCents = 0
       let savingsCents = 0
       const items = chosen.map((product) => {
-        const quantity = product.unit === 'kg' ? faker.number.float({ min: 0.3, max: 2, fractionDigits: 3 }) : faker.number.int({ min: 1, max: 3 })
+        const quantity =
+          product.unit === 'kg'
+            ? faker.number.float({ min: 0.3, max: 2, fractionDigits: 3 })
+            : faker.number.int({ min: 1, max: 3 })
         const promo = faker.datatype.boolean({ probability: 0.25 })
         const unitPriceCents = product.priceCents
         const listPrice = promo ? Math.round(unitPriceCents * 1.15) : unitPriceCents

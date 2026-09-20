@@ -83,7 +83,9 @@ function PurchaseSummaryPage() {
                 {formatBRL(purchase.totalCents)}
               </span>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                {saved >= 0 ? `-${formatPercent((saved / budget.limitCents) * 100)} vs meta` : 'acima da meta'}
+                {saved >= 0
+                  ? `-${formatPercent((saved / budget.limitCents) * 100)} vs meta`
+                  : 'acima da meta'}
               </span>
             </div>
           </div>
@@ -102,15 +104,14 @@ function PurchaseSummaryPage() {
                 </span>
               </div>
               <div className="mt-1.5">
-                <ProgressBar
-                  percent={budget.percent}
-                  tone={budget.isOver ? 'error' : 'primary'}
-                />
+                <ProgressBar percent={budget.percent} tone={budget.isOver ? 'error' : 'primary'} />
               </div>
               <p className="mt-2 text-[11px] text-on-surface-variant">
                 Você poupou{' '}
-                <strong className="font-bold text-primary">{formatBRL(purchase.savingsCents)}</strong> em
-                promoções ativadas com o leitor.
+                <strong className="font-bold text-primary">
+                  {formatBRL(purchase.savingsCents)}
+                </strong>{' '}
+                em promoções ativadas com o leitor.
               </p>
             </div>
           </div>
@@ -130,7 +131,9 @@ function PurchaseSummaryPage() {
                 <Icon name="local_offer" className="text-[18px]" />
               </div>
               <div className="min-w-0">
-                <span className="block text-[10px] uppercase text-on-surface-variant">Descontos</span>
+                <span className="block text-[10px] uppercase text-on-surface-variant">
+                  Descontos
+                </span>
                 <span className="tnum text-sm font-bold text-primary">
                   {formatBRL(purchase.savingsCents)}
                 </span>
@@ -170,7 +173,9 @@ function PurchaseSummaryPage() {
                   <Icon name={slice.icon} className="text-[20px]" />
                 </div>
                 <div className="min-w-0">
-                  <span className="block truncate text-sm font-bold text-on-surface">{slice.name}</span>
+                  <span className="block truncate text-sm font-bold text-on-surface">
+                    {slice.name}
+                  </span>
                   <span className="text-[11px] text-on-surface-variant">{slice.count} itens</span>
                 </div>
               </div>
@@ -178,7 +183,9 @@ function PurchaseSummaryPage() {
                 <span className="tnum block text-sm font-bold text-on-surface">
                   {formatBRL(slice.totalCents)}
                 </span>
-                <span className="text-[11px] font-bold text-primary">{formatPercent(slice.percent)}</span>
+                <span className="text-[11px] font-bold text-primary">
+                  {formatPercent(slice.percent)}
+                </span>
               </div>
             </div>
           ))}
@@ -191,7 +198,9 @@ function PurchaseSummaryPage() {
           {items.map((item) => (
             <div key={item.id} className="flex items-center justify-between gap-3 py-2.5">
               <div className="min-w-0">
-                <span className="block truncate text-sm font-medium text-on-surface">{item.name}</span>
+                <span className="block truncate text-sm font-medium text-on-surface">
+                  {item.name}
+                </span>
                 <span className="tnum text-[11px] text-on-surface-variant">
                   {formatQuantity(item.quantity, 'un')} × {formatBRL(item.unitPriceCents)}
                   {item.wasPromo && <span className="ml-1 font-bold text-secondary">· oferta</span>}

@@ -4,20 +4,20 @@ Aplicativo mobile-first de **carrinho inteligente e controle de orçamento** par
 
 Construído com **TanStack Start + SQLite**, seguindo **TDD** (Vitest) e com dados de demonstração gerados por **faker**.
 
-> Baseado nos mockups do projeto Stitch *Smart Cart Retail & Budgeting* (`DESIGN.md`), com o design system traduzido para tokens do Tailwind v4.
+> Baseado nos mockups do projeto Stitch _Smart Cart Retail & Budgeting_ (`DESIGN.md`), com o design system traduzido para tokens do Tailwind v4.
 
 ---
 
 ## 📱 Telas
 
-| Rota | Tela | Descrição |
-| --- | --- | --- |
-| `/` | **Carrinho + Orçamento** | Monitor de gasto em tempo real, meta ajustável, gauge, busca, filtros por categoria, stepper de quantidade, economia e dock "Ir ao caixa". |
-| `/scanner` | **Scanner de produtos** | Viewfinder simulado, leitura por código de barras (EAN), preço na etiqueta, quantidade, toggle de promoção e impacto no orçamento antes de adicionar. |
-| `/lista` | **Lista de compras** | Progresso (anel + barra), itens pendentes vs. já no carrinho, adição rápida e "bipar" item da lista direto para o carrinho. |
-| `/historico` | **Histórico** | Visão mensal (gasto, meta, economia, frequência), navegação por mês, busca e filtros por mercado. |
-| `/resumo` | **Resumo do mês** | Totais do mês, performance vs. meta, distribuição de gastos por categoria e compras do período. |
-| `/compra/$purchaseId` | **Recibo** | Resumo da compra finalizada: total pago, economia, distribuição por categoria e recibo item a item. |
+| Rota                  | Tela                     | Descrição                                                                                                                                             |
+| --------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                   | **Carrinho + Orçamento** | Monitor de gasto em tempo real, meta ajustável, gauge, busca, filtros por categoria, stepper de quantidade, economia e dock "Ir ao caixa".            |
+| `/scanner`            | **Scanner de produtos**  | Viewfinder simulado, leitura por código de barras (EAN), preço na etiqueta, quantidade, toggle de promoção e impacto no orçamento antes de adicionar. |
+| `/lista`              | **Lista de compras**     | Progresso (anel + barra), itens pendentes vs. já no carrinho, adição rápida e "bipar" item da lista direto para o carrinho.                           |
+| `/historico`          | **Histórico**            | Visão mensal (gasto, meta, economia, frequência), navegação por mês, busca e filtros por mercado.                                                     |
+| `/resumo`             | **Resumo do mês**        | Totais do mês, performance vs. meta, distribuição de gastos por categoria e compras do período.                                                       |
+| `/compra/$purchaseId` | **Recibo**               | Resumo da compra finalizada: total pago, economia, distribuição por categoria e recibo item a item.                                                   |
 
 ---
 
@@ -46,17 +46,21 @@ O banco é criado automaticamente em `data/carrinhosmart.db`. Se estiver vazio, 
 
 ### Scripts
 
-| Script | Descrição |
-| --- | --- |
-| `npm run dev` | Servidor de desenvolvimento (Vite, porta 3000). |
-| `npm run build` | Build de produção (Nitro, saída em `.output`). |
-| `npm run preview` | Pré-visualiza o build de produção. |
-| `npm test` | Roda toda a suíte de testes (Vitest). |
-| `npm run test:watch` | Testes em modo watch. |
-| `npm run typecheck` | Checagem de tipos (`tsc --noEmit`). |
-| `npm run seed` | (Re)popula o banco com faker. |
-| `npm run db:reset` | Apaga o banco e roda o seed novamente. |
-| `npm run generate-routes` | Regenera o `routeTree.gen.ts`. |
+| Script                    | Descrição                                          |
+| ------------------------- | -------------------------------------------------- |
+| `npm run dev`             | Servidor de desenvolvimento (Vite, porta 3000).    |
+| `npm run build`           | Build de produção (Nitro, saída em `.output`).     |
+| `npm run preview`         | Pré-visualiza o build de produção.                 |
+| `npm test`                | Roda toda a suíte de testes (Vitest).              |
+| `npm run test:watch`      | Testes em modo watch.                              |
+| `npm run typecheck`       | Checagem de tipos (`tsc --noEmit`).                |
+| `npm run lint`            | ESLint (flat config) com zero warnings permitidos. |
+| `npm run lint:fix`        | ESLint aplicando correções automáticas.            |
+| `npm run format`          | Formata o projeto com Prettier.                    |
+| `npm run format:check`    | Verifica a formatação sem alterar arquivos.        |
+| `npm run seed`            | (Re)popula o banco com faker.                      |
+| `npm run db:reset`        | Apaga o banco e roda o seed novamente.             |
+| `npm run generate-routes` | Regenera o `routeTree.gen.ts`.                     |
 
 ---
 
@@ -114,17 +118,32 @@ npm run build
 
 ---
 
+## 🔍 Qualidade, CI e pre-commit
+
+- **ESLint** (flat config) com `typescript-eslint`, `react-hooks` e `react-refresh` — `npm run lint` roda com `--max-warnings 0`.
+- **Prettier** como fonte de verdade da formatação — `npm run format:check` valida no CI.
+- **Husky + lint-staged**: a cada commit o hook `.husky/pre-commit` roda:
+  1. `lint-staged` → `eslint --fix` + `prettier --write` nos arquivos alterados;
+  2. `npm test` → a suíte completa de testes.
+
+Instale os hooks automaticamente com `npm install` (o script `prepare` executa `husky`).
+
+- **GitHub Actions** (`.github/workflows/ci.yml`): em cada push/PR para `main` roda, no Node 22:
+  `format:check` → `lint` → `typecheck` → `test` → `build`.
+
+---
+
 ## 🗄️ Modelo de dados
 
-| Tabela | Papel |
-| --- | --- |
-| `categories` | Categorias (mercearia, laticínios, hortifrúti, limpeza, higiene, padaria). |
-| `stores` | Mercados disponíveis para troca de loja. |
-| `products` | Catálogo com `barcode` (EAN), unidade, preço de referência, corredor. |
-| `shopping_lists` / `list_items` | Lista ativa, itens pendentes e escaneados (com preço esperado vs. bipado). |
-| `carts` / `cart_items` | Carrinho ativo por loja, linhas com preço, quantidade, promoção e vínculo com item da lista. |
-| `purchases` / `purchase_items` | Compras finalizadas (histórico, resumo e recibo). |
-| `price_history` | Preços registrados por produto/loja para sugerir preço e calcular tendência. |
+| Tabela                          | Papel                                                                                        |
+| ------------------------------- | -------------------------------------------------------------------------------------------- |
+| `categories`                    | Categorias (mercearia, laticínios, hortifrúti, limpeza, higiene, padaria).                   |
+| `stores`                        | Mercados disponíveis para troca de loja.                                                     |
+| `products`                      | Catálogo com `barcode` (EAN), unidade, preço de referência, corredor.                        |
+| `shopping_lists` / `list_items` | Lista ativa, itens pendentes e escaneados (com preço esperado vs. bipado).                   |
+| `carts` / `cart_items`          | Carrinho ativo por loja, linhas com preço, quantidade, promoção e vínculo com item da lista. |
+| `purchases` / `purchase_items`  | Compras finalizadas (histórico, resumo e recibo).                                            |
+| `price_history`                 | Preços registrados por produto/loja para sugerir preço e calcular tendência.                 |
 
 Os valores monetários são armazenados **em centavos (inteiros)** para evitar erros de ponto flutuante.
 
@@ -132,7 +151,7 @@ Os valores monetários são armazenados **em centavos (inteiros)** para evitar e
 
 ## 🎨 Design system
 
-Os tokens do `DESIGN.md` (cores, tipografia Plus Jakarta Sans, raios, elevação) foram portados para o `@theme` do Tailwind v4 em `src/styles.css`, reproduzindo a estética *Modern Tactile Minimalism* dos mockups — gauge segmentado, chips, steppers táteis, bottom navigation com FAB central e safe areas.
+Os tokens do `DESIGN.md` (cores, tipografia Plus Jakarta Sans, raios, elevação) foram portados para o `@theme` do Tailwind v4 em `src/styles.css`, reproduzindo a estética _Modern Tactile Minimalism_ dos mockups — gauge segmentado, chips, steppers táteis, bottom navigation com FAB central e safe areas.
 
 ---
 
