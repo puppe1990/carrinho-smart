@@ -263,6 +263,7 @@ No fim de `src/server/db/models.ts`, acrescente:
 ```ts
 export interface AdminCategoryRecord extends Category {
   productCount: number
+  referenceCount: number
 }
 
 export interface AdminStoreRecord extends Store {
@@ -399,6 +400,7 @@ function toAdminCategoryRecord(row: any): AdminCategoryRecord {
     icon: row.icon,
     color: row.color,
     productCount: row.product_count,
+    referenceCount: row.product_count + row.list_item_count,
   }
 }
 
@@ -516,20 +518,15 @@ const categories = {
   remove(id: string): void {
     db.prepare('DELETE FROM categories WHERE id = ?').run(id)
   },
-  countProducts(id: string): number {
-    const row = db
-      .prepare(
-        `SELECT
-          (SELECT COUNT(*) FROM products WHERE category_id = ?) +
-          (SELECT COUNT(*) FROM list_items WHERE category_id = ?) AS total`,
-      )
-      .get(id, id) as { total: number }
-    return row.total
+  countReferences(id: string): number {
+    return categories.adminGet(id)?.referenceCount ?? 0
   },
   adminGet(id: string): AdminCategoryRecord | null {
     const row = db
       .prepare(
-        `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count
+        `SELECT c.*,
+            (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count,
+            (SELECT COUNT(*) FROM list_items li WHERE li.category_id = c.id) AS list_item_count
            FROM categories c WHERE c.id = ?`,
       )
       .get(id) as any
@@ -539,7 +536,9 @@ const categories = {
     return (
       db
         .prepare(
-          `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count
+          `SELECT c.*,
+              (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count,
+              (SELECT COUNT(*) FROM list_items li WHERE li.category_id = c.id) AS list_item_count
              FROM categories c ORDER BY c.name`,
         )
         .all() as any[]
@@ -1190,7 +1189,7 @@ describe('admin categories', () => {
       priceCents: 1000,
     })
     expect(() => deleteCategory(repo, 'mercearia')).toThrow(
-      'Não é possível excluir: 1 produto(s) usam esta categoria.',
+      'Não é possível excluir: 1 registro(s) usam esta categoria.',
     )
   })
 
@@ -1200,7 +1199,7 @@ describe('admin categories', () => {
   })
 
   it('lista categorias com contagem de produtos', () => {
-    expect(listCategories(repo).map((c) => c.productCount)).toContain(0)
+    expect(listCategories(repo).map((c) => c.referenceCount)).toContain(0)
   })
 })
 ```
@@ -1313,9 +1312,9 @@ export function updateCategory(
 export function deleteCategory(repo: Repository, id: string): void {
   const current = repo.categories.get(id)
   if (!current) throw new Error('Categoria não encontrada.')
-  const count = repo.categories.countProducts(id)
+  const count = repo.categories.countReferences(id)
   if (count > 0) {
-    throw new Error(`Não é possível excluir: ${count} produto(s) usam esta categoria.`)
+    throw new Error(`Não é possível excluir: ${count} registro(s) usam esta categoria.`)
   }
   repo.categories.remove(id)
 }
@@ -3026,7 +3025,7 @@ function AdminCategoriesPage() {
           { key: 'icon', label: 'Ícone' },
           { key: 'name', label: 'Nome' },
           { key: 'color', label: 'Cor' },
-          { key: 'products', label: 'Produtos', align: 'right' },
+          { key: 'references', label: 'Itens', align: 'right' },
           { key: 'actions', label: '', align: 'right' },
         ]}
         empty={categories.length === 0}
@@ -3042,7 +3041,7 @@ function AdminCategoriesPage() {
               <span className="font-semibold">{category.name}</span>
             </AdminCell>
             <AdminCell>{category.color}</AdminCell>
-            <AdminCell align="right">{category.productCount}</AdminCell>
+            <AdminCell align="right">{category.referenceCount}</AdminCell>
             <AdminCell align="right">
               <div className="flex justify-end gap-2">
                 <button

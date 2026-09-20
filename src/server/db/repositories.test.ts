@@ -376,11 +376,16 @@ describe('category repository (admin)', () => {
     expect(repo.categories.adminGet('laticinios')?.productCount).toBe(0)
   })
 
-  it('conta itens de lista que usam a categoria', () => {
+  it('conta referências somando produtos e itens de lista', () => {
+    seedProduct()
+    expect(repo.categories.adminGet('mercearia')?.referenceCount).toBe(1)
+
     repo.lists.create({ userId: USER, name: 'Semana', shoppingDate: '2026-09-01' })
     const list = repo.lists.getActive(USER)!
     repo.lists.addItem(list.id, { name: 'Item avulso', categoryId: 'laticinios' })
-    expect(repo.categories.countProducts('laticinios')).toBe(1)
+    expect(repo.categories.adminGet('laticinios')?.productCount).toBe(0)
+    expect(repo.categories.adminGet('laticinios')?.referenceCount).toBe(1)
+    expect(repo.categories.countReferences('laticinios')).toBe(1)
   })
 })
 

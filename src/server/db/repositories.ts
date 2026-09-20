@@ -132,6 +132,7 @@ function toAdminCategoryRecord(row: any): AdminCategoryRecord {
     icon: row.icon,
     color: row.color,
     productCount: row.product_count,
+    referenceCount: row.product_count + row.list_item_count,
   }
 }
 
@@ -178,20 +179,15 @@ export function createRepository(db: Database) {
     remove(id: string): void {
       db.prepare('DELETE FROM categories WHERE id = ?').run(id)
     },
-    countProducts(id: string): number {
-      const row = db
-        .prepare(
-          `SELECT
-            (SELECT COUNT(*) FROM products WHERE category_id = ?) +
-            (SELECT COUNT(*) FROM list_items WHERE category_id = ?) AS total`,
-        )
-        .get(id, id) as { total: number }
-      return row.total
+    countReferences(id: string): number {
+      return categories.adminGet(id)?.referenceCount ?? 0
     },
     adminGet(id: string): AdminCategoryRecord | null {
       const row = db
         .prepare(
-          `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count
+          `SELECT c.*,
+            (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count,
+            (SELECT COUNT(*) FROM list_items li WHERE li.category_id = c.id) AS list_item_count
            FROM categories c WHERE c.id = ?`,
         )
         .get(id) as any
@@ -201,7 +197,9 @@ export function createRepository(db: Database) {
       return (
         db
           .prepare(
-            `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count
+            `SELECT c.*,
+              (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count,
+              (SELECT COUNT(*) FROM list_items li WHERE li.category_id = c.id) AS list_item_count
              FROM categories c ORDER BY c.name`,
           )
           .all() as any[]

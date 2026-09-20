@@ -126,7 +126,7 @@ produtos usam esta categoria.`), no mesmo espírito de `friendlyError` do `AuthF
 
 Adicionar métodos que faltam (mantendo o estilo de prepared statements):
 
-- `categories`: `insert` (separado de `upsert`), `update`, `remove`, `countProducts(id)`
+- `categories`: `insert` (separado de `upsert`), `update`, `remove`, `countReferences(id)`
   (conta produtos e itens de lista que referenciam a categoria, cobrindo ambas as FKs).
 - `stores`: `update`, `remove`, `countUsage(id)` (carts + purchases).
 - `products`: `update`, `remove`, `countUsage(id)`, `adminList({ search, categoryId, limit,
@@ -182,7 +182,7 @@ userId, userName }> }`.
 - `AdminStore`: `{ id, name, city, createdAt, usageCount }`.
 - `AdminProduct`: `{ id, barcode, name, brand, categoryId, categoryName, unit, priceCents,
 imageUrl, aisle, usageCount }`.
-- `AdminCategory`: `{ id, name, icon, color, productCount }`.
+- `AdminCategory`: `{ id, name, icon, color, productCount, referenceCount }`.
 - `AdminUserSummary`: `{ id, name, email, createdAt, listCount, cartCount, purchaseCount,
 totalSpentCents }`.
 - `AdminUserDetail`: `{ ...summary, lists: [...], carts: [...], purchases: [...] }`.

@@ -115,6 +115,7 @@ export interface NewPurchaseItem {
 
 export interface AdminCategoryRecord extends Category {
   productCount: number
+  referenceCount: number
 }
 
 export interface AdminStoreRecord extends Store {
