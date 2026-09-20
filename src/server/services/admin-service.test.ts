@@ -127,11 +127,24 @@ describe('admin categories', () => {
   })
 
   it('preserva ícone e cor quando não informados na atualização', () => {
+    repo.categories.update('mercearia', { color: 'secondary' })
     updateCategory(repo, 'mercearia', { name: 'Mercearia Seca' })
     expect(repo.categories.get('mercearia')).toMatchObject({
       name: 'Mercearia Seca',
       icon: 'local_cafe',
-      color: 'primary',
+      color: 'secondary',
+    })
+  })
+
+  it('substitui ícone e cor quando informados na atualização', () => {
+    updateCategory(repo, 'mercearia', {
+      name: 'Mercearia Seca',
+      icon: 'rice_bowl',
+      color: 'secondary',
+    })
+    expect(repo.categories.get('mercearia')).toMatchObject({
+      icon: 'rice_bowl',
+      color: 'secondary',
     })
   })
 
