@@ -2406,15 +2406,31 @@ export function ConfirmDialog({
 }
 ```
 
-- [ ] **Step 2: Verificar**
+- [ ] **Step 2: Permitir constantes exportadas no admin no ESLint**
+
+`react-refresh/only-export-components` com `--max-warnings 0` falha porque o arquivo exporta as
+constantes de estilo junto dos componentes. Em `eslint.config.js`, adicione um override (após o
+override de `src/routes/**`):
+
+```js
+  {
+    // The admin UI kit exports shared style constants alongside components.
+    files: ['src/components/admin/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    },
+  },
+```
+
+- [ ] **Step 3: Verificar**
 
 Run: `npm run typecheck && npm run lint`
 Expected: sem erros.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/components/admin/primitives.tsx
+git add src/components/admin/primitives.tsx eslint.config.js
 git commit -m "feat(admin): add desktop UI primitives"
 ```
 
