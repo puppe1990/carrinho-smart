@@ -1,8 +1,20 @@
 import { isValidEan13, normalizeBarcode } from '../../domain/barcode'
-import type { AdminCategoryRecord, AdminProductRecord, AdminStoreRecord, Unit } from '../db/models'
+import type {
+  AdminCategoryRecord,
+  AdminProductRecord,
+  AdminStoreRecord,
+  AdminUserRecord,
+  Unit,
+} from '../db/models'
 import type { Repository } from '../db/repositories'
 import { uniqueSlug } from '../db/slug'
-import type { AdminProductList, PageFilter } from './admin-types'
+import type {
+  AdminOverview,
+  AdminProductList,
+  AdminUserDetail,
+  ListResult,
+  PageFilter,
+} from './admin-types'
 
 const COLORS = ['primary', 'secondary', 'tertiary', 'outline']
 const UNITS: Unit[] = ['un', 'kg', 'L']
@@ -247,4 +259,41 @@ export function deleteProduct(repo: Repository, id: string): void {
     throw new Error(`Não é possível excluir: ${usage} registro(s) usam este produto.`)
   }
   repo.products.remove(id)
+}
+
+export function getOverview(repo: Repository): AdminOverview {
+  return {
+    counts: {
+      users: repo.users.count({}),
+      stores: repo.stores.adminList().length,
+      products: repo.products.adminCount({}),
+      categories: repo.categories.adminList().length,
+      purchases: repo.purchases.adminCount(),
+    },
+    gmvCents: repo.purchases.adminSumTotal(),
+    recentPurchases: repo.purchases.adminListRecent(8),
+  }
+}
+
+export function listUsers(repo: Repository, filter: PageFilter = {}): ListResult<AdminUserRecord> {
+  const page = Math.max(1, filter.page ?? 1)
+  const pageSize = Math.min(100, Math.max(1, filter.pageSize ?? 20))
+  const items = repo.users.list({
+    search: filter.search,
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+  })
+  const total = repo.users.count({ search: filter.search })
+  return { items, total, page, pageSize }
+}
+
+export function getUserDetail(repo: Repository, userId: string): AdminUserDetail {
+  const user = repo.users.get(userId)
+  if (!user) throw new Error('Usuário não encontrado.')
+  return {
+    user,
+    lists: repo.lists.listByUser(userId),
+    carts: repo.carts.listByUser(userId),
+    purchases: repo.purchases.list(userId),
+  }
 }

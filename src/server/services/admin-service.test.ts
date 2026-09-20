@@ -8,9 +8,12 @@ import {
   deleteCategory,
   deleteProduct,
   deleteStore,
+  getOverview,
+  getUserDetail,
   listCategories,
   listProducts,
   listStores,
+  listUsers,
   updateCategory,
   updateProduct,
   updateStore,
@@ -374,5 +377,83 @@ describe('admin products', () => {
     const clamped = listProducts(repo, { page: -3, pageSize: 999 })
     expect(clamped.page).toBe(1)
     expect(clamped.pageSize).toBe(100)
+  })
+})
+
+function ensureUserTable() {
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS "user" (
+       id TEXT PRIMARY KEY,
+       name TEXT NOT NULL,
+       email TEXT NOT NULL UNIQUE,
+       emailVerified INTEGER NOT NULL DEFAULT 0,
+       image TEXT,
+       createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+       updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+     )`,
+  )
+}
+
+function seedUser(id: string, name: string, email: string) {
+  ensureUserTable()
+  db.prepare('INSERT INTO "user" (id, name, email) VALUES (?, ?, ?)').run(id, name, email)
+}
+
+describe('admin overview', () => {
+  it('agrega contagens, GMV e compras recentes', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    createStore(repo, { name: 'Mercado A' })
+    createCategory(repo, { name: 'Bebidas' })
+    createProduct(repo, { name: 'Café', categoryId: 'mercearia' })
+    repo.purchases.create({
+      userId: 'u1',
+      storeId: 'store-1',
+      budgetCents: 10000,
+      totalCents: 4200,
+      savingsCents: 100,
+      itemCount: 2,
+      purchasedAt: '2026-09-01T10:00:00.000Z',
+    })
+    const overview = getOverview(repo)
+    expect(overview.counts.users).toBe(1)
+    expect(overview.counts.products).toBe(1)
+    expect(overview.counts.purchases).toBe(1)
+    expect(overview.gmvCents).toBe(4200)
+    expect(overview.recentPurchases[0]?.userName).toBe('Ana')
+  })
+})
+
+describe('admin users', () => {
+  it('lista com paginação e busca', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    seedUser('u2', 'Bruno', 'bruno@x.dev')
+    const page = listUsers(repo, { search: 'bru', page: 1, pageSize: 10 })
+    expect(page.total).toBe(1)
+    expect(page.items.map((u) => u.id)).toEqual(['u2'])
+  })
+
+  it('retorna detalhe com listas, carrinhos e compras', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    repo.lists.create({ userId: 'u1', name: 'Semana', shoppingDate: '2026-09-01' })
+    repo.carts.getOrCreateActive({ userId: 'u1', storeId: 'store-1' })
+    repo.purchases.create({
+      userId: 'u1',
+      storeId: 'store-1',
+      budgetCents: 10000,
+      totalCents: 4200,
+      savingsCents: 0,
+      itemCount: 1,
+      purchasedAt: '2026-09-01T10:00:00.000Z',
+    })
+    const detail = getUserDetail(repo, 'u1')
+    expect(detail.user.email).toBe('ana@x.dev')
+    expect(detail.lists).toHaveLength(1)
+    expect(detail.carts).toHaveLength(1)
+    expect(detail.purchases).toHaveLength(1)
+  })
+
+  it('falha para usuário inexistente', () => {
+    ensureUserTable()
+    expect(() => getUserDetail(repo, 'missing')).toThrow('Usuário não encontrado.')
   })
 })
