@@ -32,6 +32,16 @@ describe('auth', () => {
     expect(tables).toEqual(expect.arrayContaining(['user', 'session', 'account', 'verification']))
   })
 
+  it('exposes the user columns the admin queries depend on', () => {
+    const columns = db
+      .prepare('PRAGMA table_info("user")')
+      .all()
+      .map((row: any) => row.name)
+    expect(columns).toEqual(
+      expect.arrayContaining(['id', 'name', 'email', 'createdAt', 'updatedAt']),
+    )
+  })
+
   it('signs up a user and issues a session cookie', async () => {
     const { user, cookie } = await signUp()
     expect(user.email).toBe('ana@example.com')

@@ -24,6 +24,17 @@ beforeEach(() => {
     color: 'secondary',
   })
   repo.stores.insert({ id: 'store-1', name: 'Pão de Açúcar - Morumbi', city: 'São Paulo' })
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS "user" (
+       id TEXT PRIMARY KEY,
+       name TEXT NOT NULL,
+       email TEXT NOT NULL UNIQUE,
+       emailVerified INTEGER NOT NULL DEFAULT 0,
+       image TEXT,
+       createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+       updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+     )`,
+  )
 })
 
 function seedProduct(overrides: Partial<Parameters<Repository['products']['insert']>[0]> = {}) {
@@ -350,5 +361,263 @@ describe('price history repository', () => {
     expect(repo.priceHistory.lastForProduct(USER, 'prod-1')?.priceCents).toBe(3890)
     expect(repo.priceHistory.historyForProduct(USER, 'prod-1')).toHaveLength(2)
     expect(repo.priceHistory.lastForProduct(OTHER_USER, 'prod-1')).toBeNull()
+  })
+})
+
+describe('category repository (admin)', () => {
+  it('cria, atualiza e remove categorias', () => {
+    repo.categories.insert({
+      id: 'bebidas',
+      name: 'Bebidas',
+      icon: 'local_drink',
+      color: 'primary',
+    })
+    expect(repo.categories.adminGet('bebidas')?.name).toBe('Bebidas')
+
+    repo.categories.update('bebidas', { name: 'Bebidas e Sucos' })
+    expect(repo.categories.get('bebidas')?.name).toBe('Bebidas e Sucos')
+
+    repo.categories.remove('bebidas')
+    expect(repo.categories.get('bebidas')).toBeNull()
+  })
+
+  it('conta produtos por categoria', () => {
+    seedProduct()
+    expect(repo.categories.adminGet('mercearia')?.productCount).toBe(1)
+    expect(repo.categories.adminGet('laticinios')?.productCount).toBe(0)
+  })
+
+  it('conta referências somando produtos e itens de lista', () => {
+    seedProduct()
+    expect(repo.categories.adminGet('mercearia')?.referenceCount).toBe(1)
+
+    repo.lists.create({ userId: USER, name: 'Semana', shoppingDate: '2026-09-01' })
+    const list = repo.lists.getActive(USER)!
+    repo.lists.addItem(list.id, { name: 'Café avulso', categoryId: 'mercearia' })
+    expect(repo.categories.adminGet('mercearia')?.productCount).toBe(1)
+    expect(repo.categories.adminGet('mercearia')?.referenceCount).toBe(2)
+    expect(repo.categories.countReferences('mercearia')).toBe(2)
+
+    repo.lists.addItem(list.id, { name: 'Item avulso', categoryId: 'laticinios' })
+    expect(repo.categories.adminGet('laticinios')?.productCount).toBe(0)
+    expect(repo.categories.adminGet('laticinios')?.referenceCount).toBe(1)
+  })
+})
+
+describe('store repository (admin)', () => {
+  it('atualiza nome e cidade', () => {
+    repo.stores.update('store-1', { name: 'Mercado Novo', city: 'Campinas' })
+    expect(repo.stores.get('store-1')).toEqual({
+      id: 'store-1',
+      name: 'Mercado Novo',
+      city: 'Campinas',
+    })
+  })
+
+  it('preserva a cidade quando ela é omitida', () => {
+    repo.stores.update('store-1', { name: 'Mercado Novo' })
+    expect(repo.stores.get('store-1')?.city).toBe('São Paulo')
+  })
+
+  it('limpa a cidade quando null é informado', () => {
+    repo.stores.update('store-1', { city: null })
+    expect(repo.stores.get('store-1')?.city).toBeNull()
+  })
+
+  it('conta uso em carrinhos, compras e histórico', () => {
+    seedProduct()
+    const cart = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 1000,
+    })
+    repo.carts.addLine(cart.id, {
+      productId: 'prod-1',
+      name: 'Café',
+      categoryId: 'mercearia',
+      unitPriceCents: 1000,
+    })
+    repo.carts.checkout(cart.id)
+    expect(repo.stores.countUsage('store-1')).toBe(3)
+    expect(repo.stores.adminGet('store-1')?.usageCount).toBe(3)
+  })
+
+  it('remove lojas sem uso', () => {
+    repo.stores.insert({ id: 'store-2', name: 'Sem uso', city: null })
+    repo.stores.remove('store-2')
+    expect(repo.stores.get('store-2')).toBeNull()
+  })
+})
+
+describe('product repository (admin)', () => {
+  it('atualiza campos do produto', () => {
+    seedProduct()
+    repo.products.update('prod-1', { name: 'Café Premium', priceCents: 2590 })
+    expect(repo.products.get('prod-1')?.name).toBe('Café Premium')
+    expect(repo.products.get('prod-1')?.priceCents).toBe(2590)
+  })
+
+  it('conta uso do produto em carrinho, lista, compra e histórico', () => {
+    seedProduct()
+
+    repo.lists.create({ userId: USER, name: 'Semana', shoppingDate: '2026-09-01' })
+    const list = repo.lists.getActive(USER)!
+    repo.lists.addItem(list.id, { productId: 'prod-1', name: 'Café', categoryId: 'mercearia' })
+
+    const cart = repo.carts.getOrCreateActive({ userId: USER, storeId: 'store-1' })
+    repo.carts.addLine(cart.id, {
+      productId: 'prod-1',
+      name: 'Café',
+      categoryId: 'mercearia',
+      unitPriceCents: 1000,
+    })
+
+    repo.purchases.create(
+      {
+        userId: USER,
+        storeId: 'store-1',
+        budgetCents: 1000,
+        totalCents: 1000,
+        savingsCents: 0,
+        itemCount: 1,
+        purchasedAt: '2026-09-01T10:00:00.000Z',
+      },
+      [
+        {
+          productId: 'prod-1',
+          name: 'Café',
+          categoryId: 'mercearia',
+          unitPriceCents: 1000,
+          quantity: 1,
+          totalCents: 1000,
+          wasPromo: false,
+        },
+      ],
+    )
+
+    repo.priceHistory.record({
+      userId: USER,
+      productId: 'prod-1',
+      storeId: 'store-1',
+      priceCents: 1000,
+    })
+
+    expect(repo.products.countUsage('prod-1')).toBe(4)
+    expect(repo.products.adminGet('prod-1')?.usageCount).toBe(4)
+  })
+
+  it('lista e filtra produtos com nome da categoria', () => {
+    seedProduct()
+    seedProduct({ id: 'prod-2', barcode: '7891000244103', name: 'Leite', brand: 'Nestlé' })
+    const all = repo.products.adminList({})
+    expect(all).toHaveLength(2)
+    expect(all[0]?.categoryName).toBeTruthy()
+    expect(repo.products.adminList({ search: 'leite' }).map((p) => p.id)).toEqual(['prod-2'])
+    expect(repo.products.adminList({ categoryId: 'laticinios' })).toHaveLength(0)
+    expect(repo.products.adminCount({ search: 'leite' })).toBe(1)
+  })
+
+  it('remove produto sem uso', () => {
+    seedProduct()
+    repo.products.remove('prod-1')
+    expect(repo.products.get('prod-1')).toBeNull()
+  })
+})
+
+function seedUser(id: string, name: string, email: string) {
+  db.prepare('INSERT INTO "user" (id, name, email) VALUES (?, ?, ?)').run(id, name, email)
+}
+
+describe('user repository (admin)', () => {
+  it('lista usuários com contagens e total gasto isolados por usuário', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    seedUser('u2', 'Bruno', 'bruno@x.dev')
+    repo.lists.create({ userId: 'u1', name: 'Semana', shoppingDate: '2026-09-01' })
+    repo.carts.getOrCreateActive({ userId: 'u1', storeId: 'store-1' })
+    repo.purchases.create({
+      userId: 'u1',
+      storeId: 'store-1',
+      budgetCents: 10000,
+      totalCents: 5000,
+      savingsCents: 0,
+      itemCount: 2,
+      purchasedAt: '2026-09-01T10:00:00.000Z',
+    })
+    repo.purchases.create({
+      userId: 'u2',
+      storeId: 'store-1',
+      budgetCents: 10000,
+      totalCents: 9000,
+      savingsCents: 0,
+      itemCount: 3,
+      purchasedAt: '2026-09-02T10:00:00.000Z',
+    })
+
+    expect(repo.users.list({})).toHaveLength(2)
+    expect(repo.users.get('u1')).toMatchObject({
+      id: 'u1',
+      email: 'ana@x.dev',
+      listCount: 1,
+      cartCount: 1,
+      purchaseCount: 1,
+      totalSpentCents: 5000,
+    })
+    expect(repo.users.get('u2')?.totalSpentCents).toBe(9000)
+    expect(repo.users.get('u2')?.listCount).toBe(0)
+    expect(repo.users.get('u2')?.cartCount).toBe(0)
+    expect(repo.users.count({ search: 'ana' })).toBe(1)
+  })
+
+  it('busca e obtém usuário por id', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    seedUser('u2', 'Bruno', 'bruno@x.dev')
+    expect(repo.users.list({ search: 'bruno' }).map((u) => u.id)).toEqual(['u2'])
+    expect(repo.users.get('u1')?.name).toBe('Ana')
+    expect(repo.users.get('missing')).toBeNull()
+  })
+
+  it('pagina de forma estável quando createdAt empata', () => {
+    for (const id of ['u1', 'u2', 'u3']) {
+      db.prepare('INSERT INTO "user" (id, name, email, createdAt) VALUES (?, ?, ?, ?)').run(
+        id,
+        id,
+        `${id}@x.dev`,
+        '2026-09-01T10:00:00.000Z',
+      )
+    }
+    const first = repo.users.list({ limit: 2, offset: 0 }).map((u) => u.id)
+    const second = repo.users.list({ limit: 2, offset: 2 }).map((u) => u.id)
+    expect(first).toEqual(['u3', 'u2'])
+    expect(second).toEqual(['u1'])
+  })
+})
+
+describe('purchases repository (admin)', () => {
+  it('soma total, conta e lista recentes com nome da loja e usuário', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    repo.purchases.create({
+      userId: 'u1',
+      storeId: 'store-1',
+      budgetCents: 10000,
+      totalCents: 5000,
+      savingsCents: 0,
+      itemCount: 2,
+      purchasedAt: '2026-09-01T10:00:00.000Z',
+    })
+    expect(repo.purchases.adminCount()).toBe(1)
+    expect(repo.purchases.adminSumTotal()).toBe(5000)
+    const [recent] = repo.purchases.adminListRecent(5)
+    expect(recent?.storeName).toBe('Pão de Açúcar - Morumbi')
+    expect(recent?.userName).toBe('Ana')
+  })
+})
+
+describe('lists and carts by user', () => {
+  it('lista listas e carrinhos de um usuário', () => {
+    seedUser('u1', 'Ana', 'ana@x.dev')
+    repo.lists.create({ userId: 'u1', name: 'Semana', shoppingDate: '2026-09-01' })
+    repo.carts.getOrCreateActive({ userId: 'u1', storeId: 'store-1' })
+    expect(repo.lists.listByUser('u1')).toHaveLength(1)
+    expect(repo.carts.listByUser('u1')).toHaveLength(1)
   })
 })

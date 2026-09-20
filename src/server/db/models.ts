@@ -112,3 +112,48 @@ export interface NewPurchaseItem {
   totalCents: number
   wasPromo: boolean
 }
+
+export interface AdminCategoryRecord extends Category {
+  productCount: number
+  referenceCount: number
+}
+
+export interface AdminStoreRecord extends Store {
+  usageCount: number
+}
+
+export interface AdminProductRecord {
+  id: string
+  barcode: string
+  name: string
+  brand: string | null
+  categoryId: string
+  categoryName: string
+  unit: Unit
+  priceCents: number
+  imageUrl: string | null
+  aisle: string | null
+  usageCount: number
+}
+
+export interface AdminUserRecord {
+  id: string
+  name: string
+  email: string
+  createdAt: string
+  listCount: number
+  cartCount: number
+  purchaseCount: number
+  totalSpentCents: number
+}
+
+export interface AdminPurchaseRecord {
+  id: string
+  userId: string
+  userName: string
+  storeId: string
+  storeName: string
+  totalCents: number
+  itemCount: number
+  purchasedAt: string
+}

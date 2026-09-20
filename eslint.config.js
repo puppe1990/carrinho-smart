@@ -54,5 +54,12 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'off',
     },
   },
+  {
+    // The admin UI kit exports shared style constants alongside components.
+    files: ['src/components/admin/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    },
+  },
   prettier,
 )
