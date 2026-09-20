@@ -27,6 +27,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -132,14 +133,25 @@ export function AuthForm({ mode }: { mode: Mode }) {
               />
               <input
                 required
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 minLength={8}
                 autoComplete={isSignup ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Mínimo de 8 caracteres"
-                className="h-12 w-full rounded-xl bg-surface-container-low pl-10 pr-3 text-sm text-on-surface outline-none placeholder:text-outline/70 focus:ring-2 focus:ring-primary/40"
+                className="h-12 w-full rounded-xl bg-surface-container-low pl-10 pr-11 text-sm text-on-surface outline-none placeholder:text-outline/70 focus:ring-2 focus:ring-primary/40"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-outline transition-colors hover:text-on-surface"
+              >
+                <Icon
+                  name={showPassword ? 'visibility_off' : 'visibility'}
+                  className="text-[20px]"
+                />
+              </button>
             </div>
           </label>
 
