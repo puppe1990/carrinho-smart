@@ -10,16 +10,16 @@ Construído com **TanStack Start + SQLite**, **autenticação multitenant** (Bet
 
 ## 📱 Telas
 
-| Rota                  | Tela                     | Descrição                                                                                                                                             |
-| --------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/login`              | **Entrar**               | Login com e-mail/senha (Better Auth) e atalho para criar conta.                                                                                       |
-| `/signup`             | **Criar conta**          | Cadastro com e-mail/senha; gera dados de demonstração isolados para o novo usuário.                                                                   |
-| `/`                   | **Carrinho + Orçamento** | Monitor de gasto em tempo real, meta ajustável, gauge, busca, filtros por categoria, stepper de quantidade, economia e dock "Ir ao caixa".            |
-| `/scanner`            | **Scanner de produtos**  | Viewfinder simulado, leitura por código de barras (EAN), preço na etiqueta, quantidade, toggle de promoção e impacto no orçamento antes de adicionar. |
-| `/lista`              | **Lista de compras**     | Progresso (anel + barra), itens pendentes vs. já no carrinho, adição rápida e "bipar" item da lista direto para o carrinho.                           |
-| `/historico`          | **Histórico**            | Visão mensal (gasto, meta, economia, frequência), navegação por mês, busca e filtros por mercado.                                                     |
-| `/resumo`             | **Resumo do mês**        | Totais do mês, performance vs. meta, distribuição de gastos por categoria e compras do período.                                                       |
-| `/compra/$purchaseId` | **Recibo**               | Resumo da compra finalizada: total pago, economia, distribuição por categoria e recibo item a item.                                                   |
+| Rota                  | Tela                     | Descrição                                                                                                                                                                               |
+| --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/login`              | **Entrar**               | Login com e-mail/senha (Better Auth) e atalho para criar conta.                                                                                                                         |
+| `/signup`             | **Criar conta**          | Cadastro com e-mail/senha; gera dados de demonstração isolados para o novo usuário.                                                                                                     |
+| `/`                   | **Carrinho + Orçamento** | Monitor de gasto em tempo real, meta ajustável, gauge, busca, filtros por categoria, stepper de quantidade, economia e dock "Ir ao caixa".                                              |
+| `/scanner`            | **Scanner de produtos**  | Leitura real de código de barras pela câmera (`getUserMedia` + `BarcodeDetector`), com lanterna, entrada manual de EAN, preço na etiqueta, quantidade, promoção e impacto no orçamento. |
+| `/lista`              | **Lista de compras**     | Progresso (anel + barra), itens pendentes vs. já no carrinho, adição rápida e "bipar" item da lista direto para o carrinho.                                                             |
+| `/historico`          | **Histórico**            | Visão mensal (gasto, meta, economia, frequência), navegação por mês, busca e filtros por mercado.                                                                                       |
+| `/resumo`             | **Resumo do mês**        | Totais do mês, performance vs. meta, distribuição de gastos por categoria e compras do período.                                                                                         |
+| `/compra/$purchaseId` | **Recibo**               | Resumo da compra finalizada: total pago, economia, distribuição por categoria e recibo item a item.                                                                                     |
 
 ---
 
@@ -126,15 +126,15 @@ src/
 
 O desenvolvimento seguiu o ciclo **red → green → refactor**, escrevendo os testes antes da implementação em cada camada.
 
-- **98 testes** em **9 arquivos**, rodando com `npm test`.
-- Domínio: funções puras cobrindo dinheiro, orçamento, carrinho, lista e analytics.
+- **108 testes** em **10 arquivos**, rodando com `npm test`.
+- Domínio: funções puras cobrindo dinheiro, orçamento, carrinho, lista, analytics e **código de barras (EAN-13, dígito verificador e classificação de formatos)**.
 - Persistência: repositórios testados com **SQLite em memória** (`:memory:`), incluindo checkout transacional, histórico de preços e **isolamento por usuário**.
 - Seed: garante determinismo por seed, idempotência, reset limpo e separação de dados entre usuários.
 - Serviços: fluxos completos (overview do carrinho, leitura por código de barras, bipar item da lista, agregações mensais e recibo).
 - Auth: signup, signin, rejeição de duplicado/senha errada, resolução de sessão por cookie e hook de criação de usuário.
 
 ```bash
-npm test        # 98 passing
+npm test        # 108 passing
 npm run typecheck
 npm run build
 ```
@@ -183,6 +183,22 @@ npm run icons
 ```
 
 > **Testar a instalação:** rode `npm run build && npm run preview` e abra em `http://localhost:3000` — o navegador oferece "Instalar app".
+
+---
+
+## 📷 Leitura de código de barras
+
+O scanner usa a **câmera real do dispositivo**, sem bibliotecas externas:
+
+- **`getUserMedia`** abre a câmera traseira (`facingMode: environment`), com **lanterna** quando o hardware expõe `torch`.
+- **`BarcodeDetector`** (API nativa do Chromium) roda em um **loop de `requestAnimationFrame`**, com _cooldown_ para não repetir o mesmo código. Formatos preferidos: EAN-13, EAN-8, UPC-A/E, Code 128/39, ITF e QR.
+- Se a API não existir, a UI informa e oferece a **digitação manual** do código — o mesmo caminho usado quando a etiqueta está danificada.
+- O código lido (normalizado por `src/domain/barcode.ts`) é consultado no catálogo via server function e preenche preço, nome, marca e o histórico de preço do produto.
+- Permissões são tratadas com mensagens acionáveis (negada / sem câmera / em uso), com botão para tentar novamente.
+
+Validação de EAN-13 (dígito verificador) e a geração de códigos válidos para o seed ficam em `src/domain/barcode.ts`, cobertos por testes.
+
+> A leitura automática exige **contexto seguro** (`localhost` ou HTTPS) e um navegador com `BarcodeDetector` (Chrome/Edge/Android). Em navegadores sem suporte, use a digitação manual.
 
 ---
 

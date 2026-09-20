@@ -153,7 +153,35 @@ function ensureColumns(db: MigratableDatabase): void {
   }
 }
 
+/**
+ * Bancos criados antes da inclusão de EAN-13 válido usavam códigos sequenciais
+ * (`7891000000001`). Regenera o dígito verificador para um EAN-13 válido.
+ */
+function fixLegacyBarcodes(db: MigratableDatabase): void {
+  const rows = db
+    .prepare("SELECT id, barcode FROM products WHERE barcode LIKE '7891000000%'")
+    .all() as Array<{
+    id: string
+    barcode: string
+  }>
+
+  for (const row of rows) {
+    const digits = String(row.barcode).replace(/\D/g, '')
+    if (digits.length !== 13) continue
+    const prefix = digits.slice(0, 12)
+    let sum = 0
+    for (let index = 0; index < 12; index += 1) {
+      sum += Number(prefix[index]) * (index % 2 === 0 ? 1 : 3)
+    }
+    const fixed = `${prefix}${(10 - (sum % 10)) % 10}`
+    if (fixed !== row.barcode) {
+      db.exec(`UPDATE products SET barcode = '${fixed}' WHERE id = '${row.id}'`)
+    }
+  }
+}
+
 export function migrate(db: MigratableDatabase): void {
   db.exec(SCHEMA_SQL)
   ensureColumns(db)
+  fixLegacyBarcodes(db)
 }

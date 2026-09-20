@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker'
+import { buildEan13 } from '../../domain/barcode'
 import type { Database } from './client'
 import { createRepository, type Repository } from './repositories'
 
@@ -158,7 +159,7 @@ const STORES = [
 ]
 
 function barcodeFor(index: number): string {
-  return `789100000${String(index).padStart(4, '0')}`
+  return buildEan13(`7891000000${String(index).padStart(2, '0')}`)
 }
 
 function hashSeed(value: string): number {

@@ -1,79 +1,104 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { Icon } from '../components/Icon'
-import { SegmentedBudgetBar, SubHeader } from '../components/ui'
+import { SegmentedBudgetBar, Sheet, SubHeader } from '../components/ui'
 import { budgetGauge } from '../domain/budget'
-import { parseBRL, formatBRL, formatPercent } from '../domain/money'
+import { classifyBarcode, isValidEan13, normalizeBarcode } from '../domain/barcode'
+import { formatBRL, formatPercent, parseBRL } from '../domain/money'
+import { useBarcodeCamera } from '../hooks/use-barcode-camera'
 import { fetchCartOverview } from '../server/functions/cart'
-import { lookupProduct, scanProduct, searchCatalog } from '../server/functions/scanner'
+import { lookupProduct, scanProduct } from '../server/functions/scanner'
 
 export const Route = createFileRoute('/scanner')({
   loader: async () => {
-    const [overview, products] = await Promise.all([
-      fetchCartOverview({ data: {} }),
-      searchCatalog({ data: { query: '' } }),
-    ])
-    return { overview, products }
+    const overview = await fetchCartOverview({ data: {} })
+    return { overview }
   },
   component: ScannerPage,
 })
 
+type LookupResult = Awaited<ReturnType<typeof lookupProduct>>
+
 function ScannerPage() {
-  const { overview, products } = Route.useLoaderData()
+  const { overview } = Route.useLoaderData()
   const router = useRouter()
 
-  const [torch, setTorch] = useState(false)
-  const [productId, setProductId] = useState<string | null>(products[0]?.id ?? null)
-  const [trend, setTrend] = useState<{ direction: string; percent: number } | null>(null)
-  const [previousPriceCents, setPreviousPriceCents] = useState<number | null>(null)
-  const [price, setPrice] = useState(
-    products[0] ? (products[0].priceCents / 100).toFixed(2) : '0.00',
-  )
+  const [torchOn, setTorchOn] = useState(false)
+  const [manualOpen, setManualOpen] = useState(false)
+  const [manualCode, setManualCode] = useState('')
+  const [lastCode, setLastCode] = useState<string | null>(null)
+  const [lookup, setLookup] = useState<LookupResult>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [searching, setSearching] = useState(false)
+
+  const [price, setPrice] = useState('0.00')
   const [quantity, setQuantity] = useState(1)
   const [promo, setPromo] = useState(false)
-  const [showSearch, setShowSearch] = useState(false)
-  const [query, setQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const product = useMemo(
-    () => products.find((candidate) => candidate.id === productId) ?? null,
-    [products, productId],
-  )
+  const inFlightRef = useRef(false)
 
-  const unitPriceCents = parseBRL(promo ? String(Number(price) * 0.9) : price)
+  const product = lookup?.product ?? null
+  const unitPriceCents = promo ? Math.round(parseBRL(price) * 0.9) : parseBRL(price)
   const subtotalCents = Math.round(unitPriceCents * quantity)
   const gauge = budgetGauge(overview.summary.totalCents, subtotalCents, overview.budget.limitCents)
 
-  async function simulateScan() {
-    const pool = products.filter((candidate) => candidate.id !== productId)
-    const candidate = pool[Math.floor(Math.random() * pool.length)] ?? products[0]
-    if (!candidate) return
-    const lookup = await lookupProduct({
-      data: { barcode: candidate.barcode, storeId: overview.store?.id },
-    })
-    setProductId(candidate.id)
-    setQuantity(1)
-    setPromo(false)
-    setPrice((candidate.priceCents / 100).toFixed(2))
-    if (lookup) {
-      setTrend(lookup.trend)
-      setPreviousPriceCents(lookup.previousPriceCents)
+  const handleDetect = async (code: string) => {
+    if (inFlightRef.current) return
+    inFlightRef.current = true
+    setLastCode(code)
+    setLookupError(null)
+    setSearching(true)
+    try {
+      const result = await lookupProduct({
+        data: { barcode: code, storeId: overview.store?.id },
+      })
+      setLookup(result)
+      if (result) {
+        setPrice((result.suggestedPriceCents / 100).toFixed(2))
+        setQuantity(1)
+        setPromo(false)
+      } else {
+        setLookupError(`Nenhum produto cadastrado para o código ${code}.`)
+      }
+    } catch {
+      setLookupError('Não foi possível consultar o catálogo. Tente novamente.')
+    } finally {
+      setSearching(false)
+      inFlightRef.current = false
     }
   }
 
-  function selectProduct(id: string) {
-    const candidate = products.find((item) => item.id === id)
-    if (!candidate) return
-    setProductId(id)
-    setPrice((candidate.priceCents / 100).toFixed(2))
-    setQuantity(1)
-    setPromo(false)
-    setTrend(null)
-    setPreviousPriceCents(null)
-    setShowSearch(false)
-    setQuery('')
-  }
+  const camera = useBarcodeCamera({ onDetect: (code) => void handleDetect(code) })
+
+  useEffect(() => {
+    void camera.start()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const track = camera.videoRef.current?.srcObject as MediaStream | undefined
+    const capabilities = track?.getVideoTracks?.()[0]?.getCapabilities?.() as
+      { torch?: boolean } | undefined
+    if (!capabilities?.torch) return
+    const videoTrack = track!.getVideoTracks()[0]
+    void videoTrack.applyConstraints({ advanced: [{ torch: torchOn } as MediaTrackConstraintSet] })
+  }, [torchOn, camera.videoRef])
+
+  const formatLabel = useMemo(() => {
+    if (!lastCode) return null
+    const format = classifyBarcode(lastCode)
+    const labels: Record<string, string> = {
+      ean13: 'EAN-13',
+      ean8: 'EAN-8',
+      upc: 'UPC',
+      itf: 'ITF-14',
+      code128: 'Code 128',
+      unknown: 'Código',
+    }
+    return labels[format] ?? format
+  }, [lastCode])
 
   async function handleAdd() {
     if (!product) return
@@ -99,29 +124,42 @@ function ScannerPage() {
       })
       setSaved(true)
       await router.invalidate()
-      setTimeout(() => router.navigate({ to: '/' }), 500)
+      setTimeout(() => router.navigate({ to: '/' }), 450)
     } finally {
       setSaving(false)
     }
   }
 
-  const filteredProducts = query.trim()
-    ? products.filter((item) => item.name.toLowerCase().includes(query.trim().toLowerCase()))
-    : products.slice(0, 12)
+  const statusCopy: Record<typeof camera.status, string> = {
+    idle: 'Aponte a câmera para o código de barras',
+    starting: 'Iniciando câmera...',
+    running: camera.videoRef.current ? 'Procurando código de barras...' : 'Aponte a câmera',
+    error: 'Câmera indisponível',
+  }
 
   return (
     <div className="flex min-h-screen flex-col pb-8">
-      <SubHeader title="Product Scanner" subtitle="Bipe o código de barras do produto" />
+      <SubHeader title="Scanner de produtos" subtitle="Leitura real pela câmera do dispositivo" />
 
       <div className="relative h-[360px] w-full overflow-hidden bg-inverse-surface">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_55%),radial-gradient(circle_at_70%_80%,rgba(0,0,0,0.35),transparent_60%)]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-inverse-surface/80 via-transparent to-inverse-surface/90" />
+        <video
+          ref={camera.videoRef}
+          muted
+          playsInline
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+            camera.status === 'running' ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-inverse-surface/70 via-transparent to-inverse-surface/90" />
 
         <div className="relative z-20 flex items-center justify-between p-4">
           <button
             type="button"
             aria-label="Fechar scanner"
-            onClick={() => router.history.back()}
+            onClick={() => {
+              camera.stop()
+              router.history.back()
+            }}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-inverse-surface/70 text-surface backdrop-blur-md active:scale-95"
           >
             <Icon name="close" className="text-[22px]" />
@@ -129,20 +167,21 @@ function ScannerPage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setTorch((value) => !value)}
+              aria-label="Lanterna"
+              onClick={() => setTorchOn((value) => !value)}
               className={`flex h-11 items-center gap-1 rounded-full px-4 text-[11px] font-semibold backdrop-blur-md active:scale-95 ${
-                torch
+                torchOn
                   ? 'bg-secondary-container text-on-secondary-container'
                   : 'bg-inverse-surface/70 text-surface'
               }`}
             >
-              <Icon name={torch ? 'flash_on' : 'flash_off'} className="text-[20px]" />
-              {torch ? 'Acesa' : 'Lanterna'}
+              <Icon name={torchOn ? 'flash_on' : 'flash_off'} className="text-[20px]" />
+              {torchOn ? 'Acesa' : 'Lanterna'}
             </button>
             <button
               type="button"
               title="Digitar código manualmente"
-              onClick={() => setShowSearch((value) => !value)}
+              onClick={() => setManualOpen(true)}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-inverse-surface/70 text-surface backdrop-blur-md active:scale-95"
             >
               <Icon name="keyboard" className="text-[22px]" />
@@ -160,23 +199,34 @@ function ScannerPage() {
           <div className="w-full px-2">
             <div className="h-0.5 w-full animate-pulse bg-gradient-to-r from-transparent via-primary-fixed to-transparent shadow-[0_0_12px_#6ffbbe]" />
           </div>
-          <div className="mt-4 flex items-center gap-1 rounded-full bg-primary-fixed px-3 py-1 text-on-primary-fixed shadow-md">
-            <Icon name="qr_code_scanner" className="text-[16px]" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Código detectado</span>
-          </div>
+          {searching && (
+            <div className="mt-4 flex items-center gap-1 rounded-full bg-primary-fixed px-3 py-1 text-on-primary-fixed shadow-md">
+              <Icon name="progress_activity" className="animate-spin text-[16px]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Consultando</span>
+            </div>
+          )}
         </div>
 
         <div className="relative z-10 flex flex-col items-center gap-2 pb-3">
-          <p className="text-xs text-surface drop-shadow">
-            Aponte a câmera para o código de barras ou QR Code
-          </p>
-          <button
-            type="button"
-            onClick={simulateScan}
-            className="rounded-full bg-primary-fixed/90 px-4 py-1.5 text-[11px] font-bold text-on-primary-fixed active:scale-95"
-          >
-            Simular leitura de código
-          </button>
+          <p className="text-xs text-surface drop-shadow">{statusCopy[camera.status]}</p>
+          {camera.status === 'running' && (
+            <button
+              type="button"
+              onClick={() => setManualOpen(true)}
+              className="rounded-full bg-primary-fixed/90 px-4 py-1.5 text-[11px] font-bold text-on-primary-fixed active:scale-95"
+            >
+              Digitar o código
+            </button>
+          )}
+          {camera.status === 'error' && (
+            <button
+              type="button"
+              onClick={() => void camera.start()}
+              className="rounded-full bg-secondary-container px-4 py-1.5 text-[11px] font-bold text-on-secondary-container active:scale-95"
+            >
+              Tentar novamente
+            </button>
+          )}
         </div>
       </div>
 
@@ -184,14 +234,65 @@ function ScannerPage() {
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-surface-container-highest" />
 
         <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="inline-flex items-center gap-1 rounded-full bg-primary-container/15 px-3 py-1 text-primary">
-            <Icon name="check_circle" className="text-[18px]" filled />
-            <span className="text-xs font-semibold">Produto identificado</span>
+          <div
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 ${
+              product
+                ? 'bg-primary-container/15 text-primary'
+                : lookupError
+                  ? 'bg-error-container text-on-error-container'
+                  : 'bg-surface-container text-on-surface-variant'
+            }`}
+          >
+            <Icon
+              name={product ? 'check_circle' : lookupError ? 'error' : 'qr_code_scanner'}
+              className="text-[18px]"
+              filled={Boolean(product)}
+            />
+            <span className="text-xs font-semibold">
+              {product
+                ? 'Produto identificado'
+                : lookupError
+                  ? 'Não encontrado'
+                  : 'Aguardando leitura'}
+            </span>
           </div>
           <span className="rounded bg-surface-container px-2 py-0.5 font-mono text-[10px] text-on-surface-variant">
-            {product ? `EAN ${product.barcode}` : 'EAN --'}
+            {lastCode ? `${formatLabel} ${lastCode}` : 'EAN --'}
           </span>
         </div>
+
+        {camera.error && (
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-error-container p-3 text-on-error-container">
+            <Icon name="videocam_off" className="text-[18px]" />
+            <span className="text-[11px] font-medium">{camera.error}</span>
+          </div>
+        )}
+
+        {camera.autoDetectUnsupported && (
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-secondary-fixed/50 p-3 text-on-secondary-container">
+            <Icon name="info" className="text-[18px]" />
+            <span className="text-[11px] font-medium">
+              Este navegador não faz leitura automática de código de barras. Use "Digitar o código"
+              para informar o EAN manualmente.
+            </span>
+          </div>
+        )}
+
+        {lookupError && (
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-secondary-fixed/50 p-3 text-on-secondary-container">
+            <Icon name="info" className="text-[18px]" />
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-medium">{lookupError}</span>
+              <button
+                type="button"
+                onClick={() => setManualOpen(true)}
+                className="self-start text-[11px] font-bold underline"
+              >
+                Corrigir código
+              </button>
+            </div>
+          </div>
+        )}
 
         {product ? (
           <div className="mb-4 flex items-center gap-4 rounded-2xl bg-surface-container-low p-3">
@@ -203,9 +304,18 @@ function ScannerPage() {
               <p className="truncate text-[11px] text-on-surface-variant">
                 {product.brand ?? 'Sem marca'} · {product.aisle ?? ''}
               </p>
+              {lookup && lookup.previousRecordedAt && (
+                <p className="mt-0.5 text-[11px] text-on-surface-variant">
+                  Última compra: {formatBRL(lookup.previousPriceCents)} (
+                  {lookup.trend.direction === 'flat'
+                    ? 'mesmo preço'
+                    : `${lookup.trend.direction === 'up' ? '+' : '-'}${lookup.trend.percent}%`}
+                  )
+                </p>
+              )}
               <button
                 type="button"
-                onClick={() => setShowSearch(true)}
+                onClick={() => setManualOpen(true)}
                 className="mt-1 flex items-center gap-0.5 text-[11px] text-primary"
               >
                 Não é este produto? Corrigir
@@ -215,34 +325,9 @@ function ScannerPage() {
           </div>
         ) : (
           <div className="mb-4 rounded-2xl bg-surface-container-low p-4 text-center text-xs text-on-surface-variant">
-            Nenhum produto selecionado. Simule uma leitura ou busque no catálogo.
-          </div>
-        )}
-
-        {showSearch && (
-          <div className="mb-4 rounded-2xl bg-surface-container-low p-3">
-            <input
-              autoFocus
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar produto por nome..."
-              className="h-11 w-full rounded-xl bg-surface-container-lowest px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            <div className="no-scrollbar mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
-              {filteredProducts.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => selectProduct(item.id)}
-                  className="flex items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-surface-container"
-                >
-                  <span className="truncate text-xs font-medium text-on-surface">{item.name}</span>
-                  <span className="tnum shrink-0 text-[11px] text-on-surface-variant">
-                    {formatBRL(item.priceCents)}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {searching
+              ? 'Consultando o catálogo...'
+              : 'Aproxime o código de barras da câmera. Se a leitura falhar, digite o código manualmente.'}
           </div>
         )}
 
@@ -260,24 +345,12 @@ function ScannerPage() {
                 id="shelf-price"
                 type="number"
                 step="0.10"
+                min="0"
                 value={price}
                 onChange={(event) => setPrice(event.target.value)}
                 className="tnum w-full bg-transparent text-3xl font-extrabold tracking-tight text-on-surface outline-none"
               />
             </div>
-            {previousPriceCents !== null && previousPriceCents !== unitPriceCents && (
-              <div
-                className={`flex items-center gap-1 text-[10px] font-semibold ${
-                  trend?.direction === 'down' ? 'text-primary' : 'text-secondary'
-                }`}
-              >
-                <Icon
-                  name={trend?.direction === 'down' ? 'trending_down' : 'trending_up'}
-                  className="text-[14px]"
-                />
-                Última compra: {formatBRL(previousPriceCents)}
-              </div>
-            )}
           </div>
 
           <div className="col-span-5 flex flex-col items-center justify-between rounded-2xl bg-surface-container-low p-3 shadow-sm">
@@ -377,6 +450,63 @@ function ScannerPage() {
           {saved ? 'Item adicionado!' : `Adicionar ao carrinho (+ ${formatBRL(subtotalCents)})`}
         </button>
       </div>
+
+      <Sheet
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
+        title="Digitar código de barras"
+      >
+        <p className="mb-3 text-xs text-on-surface-variant">
+          Informe o código impresso na embalagem (EAN-13, EAN-8, UPC ou Code 128).
+        </p>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            const code = normalizeBarcode(manualCode)
+            if (!code) return
+            setManualOpen(false)
+            setManualCode('')
+            void handleDetect(code)
+          }}
+          className="flex flex-col gap-3"
+        >
+          <input
+            autoFocus
+            inputMode="numeric"
+            value={manualCode}
+            onChange={(event) => setManualCode(event.target.value)}
+            placeholder="Ex.: 7891000000014"
+            className="tnum h-12 w-full rounded-xl bg-surface-container-low px-3 text-lg font-bold tracking-wider text-on-surface outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <div className="flex items-center gap-2 rounded-xl bg-surface-container-low p-3">
+            <Icon
+              name={
+                manualCode.length === 0
+                  ? 'info'
+                  : isValidEan13(normalizeBarcode(manualCode))
+                    ? 'verified'
+                    : 'help'
+              }
+              className="text-[18px] text-primary"
+            />
+            <span className="text-[11px] text-on-surface-variant">
+              {manualCode.length === 0
+                ? 'Digite os dígitos do código.'
+                : isValidEan13(normalizeBarcode(manualCode))
+                  ? 'EAN-13 válido — dígito verificador confere.'
+                  : `Formato detectado: ${classifyBarcode(normalizeBarcode(manualCode))}.`}
+            </span>
+          </div>
+          <button
+            type="submit"
+            disabled={!normalizeBarcode(manualCode)}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-container text-sm font-bold text-on-primary disabled:opacity-50"
+          >
+            <Icon name="search" className="text-[20px]" />
+            Consultar no catálogo
+          </button>
+        </form>
+      </Sheet>
     </div>
   )
 }
