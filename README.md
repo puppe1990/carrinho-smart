@@ -1,5 +1,7 @@
 # CarrinhoSmart 🛒
 
+![CarrinhoSmart — bipe, controle e economize no mercado](public/og.png)
+
 Aplicativo mobile-first de **carrinho inteligente e controle de orçamento** para supermercado. Você bipa os produtos, acompanha o gasto em tempo real contra uma meta, gerencia a lista de compras e fecha a compra com um recibo e resumo por categoria.
 
 Construído com **TanStack Start + SQLite**, **autenticação multitenant** (Better Auth, dados isolados por usuário), seguindo **TDD** (Vitest) e com dados de demonstração gerados por **faker**.
@@ -183,6 +185,13 @@ npm run icons
 ```
 
 > **Testar a instalação:** rode `npm run build && npm run preview` e abra em `http://localhost:3000` — o navegador oferece "Instalar app".
+
+### Preview de link (Open Graph)
+
+A imagem de compartilhamento fica em `public/og.png` (1200×630). As meta tags `og:*` e `twitter:*` são injetadas pelo `head` da rota raiz, com `og:image`, dimensões, `alt` e `summary_large_image`.
+
+- Edite `public/og.svg` e regenere: `rsvg-convert -w 1200 -h 630 public/og.svg -o public/og.png`
+- Defina `BETTER_AUTH_URL` com a URL pública (ex.: `https://meu-app.com`) para que as tags apontem para o domínio correto.
 
 ---
 

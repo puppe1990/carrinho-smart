@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="CarrinhoSmart — carrinho inteligente e controle de orçamento">
+  <defs>
+    <linearGradient id="og-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#faf8ff" />
+      <stop offset="1" stop-color="#eaedff" />
+    </linearGradient>
+    <linearGradient id="og-tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10b981" />
+      <stop offset="1" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="og-bar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#10b981" />
+      <stop offset="0.68" stop-color="#10b981" />
+      <stop offset="0.68" stop-color="#fea619" />
+      <stop offset="1" stop-color="#fea619" />
+    </linearGradient>
+    <filter id="og-shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0f172a" flood-opacity="0.12" />
+    </filter>
+    <filter id="og-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="70" />
+    </filter>
+    <style>
+      @font-face { font-family: 'Display'; src: url('file:///System/Library/Fonts/Supplemental/Arial Bold.ttf'); font-weight: 700; }
+      .brand { font-family: 'Display', 'Helvetica', sans-serif; font-weight: 700; font-size: 54px; letter-spacing: -1.2px; }
+      .title { font-family: 'Display', 'Helvetica', sans-serif; font-weight: 700; font-size: 60px; letter-spacing: -1.8px; }
+      .subtitle { font-family: 'Display', 'Helvetica', sans-serif; font-weight: 700; font-size: 27px; letter-spacing: 0.2px; }
+      .label { font-family: 'Display', 'Helvetica', sans-serif; font-size: 20px; letter-spacing: 2.6px; }
+      .chip { font-family: 'Display', 'Helvetica', sans-serif; font-weight: 700; font-size: 21px; }
+      .price { font-family: 'Display', 'Helvetica', sans-serif; font-weight: 700; font-size: 46px; letter-spacing: -1.2px; }
+      .meta { font-family: 'Display', 'Helvetica', sans-serif; font-size: 20px; }
+      .tag { font-family: 'Display', 'Helvetica', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 1.1px; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#og-bg)" />
+  <circle cx="1090" cy="70" r="210" fill="#10b981" opacity="0.16" filter="url(#og-glow)" />
+  <circle cx="150" cy="590" r="200" fill="#fea619" opacity="0.14" filter="url(#og-glow)" />
+
+  <g transform="translate(80 74)">
+    <g>
+      <rect width="86" height="86" rx="20" fill="url(#og-tile)" />
+      <g transform="translate(19 19) scale(2)" fill="#ffffff">
+        <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" />
+      </g>
+    </g>
+    <text class="brand" x="108" y="48" fill="#131b2e">Carrinho<tspan fill="#006c49">Smart</tspan></text>
+    <text class="label" x="110" y="76" fill="#10b981" style="letter-spacing:3.2px">CARRINHO INTELIGENTE E ORÇAMENTO</text>
+  </g>
+
+  <g transform="translate(80 250)">
+    <text class="title" x="0" y="24" fill="#131b2e">Bipe. Controle.</text>
+    <text class="title" x="0" y="94" fill="#006c49">Economize no</text>
+    <text class="title" x="0" y="164" fill="#006c49">mercado.</text>
+    <text class="subtitle" x="1" y="226" fill="#3c4a42" style="font-weight:400;font-size:26px">Leitura de código de barras em tempo real, meta de gasto e</text>
+    <text class="subtitle" x="1" y="262" fill="#3c4a42" style="font-weight:400;font-size:26px">histórico de compras — com dados isolados por usuário.</text>
+
+    <g transform="translate(0 268)">
+      <g transform="translate(0 0)">
+        <rect width="252" height="48" rx="24" fill="#ffffff" stroke="#bbcabf" stroke-width="1.5" />
+        <circle cx="26" cy="24" r="6" fill="#10b981" />
+        <text class="chip" x="44" y="32" fill="#131b2e">Barcode real</text>
+      </g>
+      <g transform="translate(266 0)">
+        <rect width="196" height="48" rx="24" fill="#ffffff" stroke="#bbcabf" stroke-width="1.5" />
+        <circle cx="26" cy="24" r="6" fill="#fea619" />
+        <text class="chip" x="44" y="32" fill="#131b2e">Meta de gasto</text>
+      </g>
+      <g transform="translate(476 0)">
+        <rect width="150" height="48" rx="24" fill="#ffffff" stroke="#bbcabf" stroke-width="1.5" />
+        <circle cx="26" cy="24" r="6" fill="#006c49" />
+        <text class="chip" x="44" y="32" fill="#131b2e">PWA</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(860 132)" filter="url(#og-shadow)">
+    <rect width="270" height="376" rx="32" fill="#ffffff" stroke="#e2e7ff" stroke-width="1.5" />
+    <rect x="108" y="20" width="54" height="7" rx="3.5" fill="#dae2fd" />
+
+    <text class="meta" x="24" y="58" fill="#3c4a42" style="font-size:17px">Total no carrinho</text>
+    <text class="price" x="24" y="100" fill="#131b2e">R$ 264,80</text>
+
+    <rect x="24" y="112" width="222" height="12" rx="6" fill="#eaedff" />
+    <rect x="24" y="112" width="160" height="12" rx="6" fill="url(#og-bar)" />
+    <text class="meta" x="24" y="152" fill="#10b981" style="font-weight:700">76% da meta</text>
+    <text class="meta" x="246" y="152" text-anchor="end" fill="#3c4a42">R$ 350,00</text>
+
+    <g transform="translate(24 178)">
+      <rect width="222" height="64" rx="16" fill="#f2f3ff" />
+      <circle cx="28" cy="32" r="14" fill="#10b981" opacity="0.18" />
+      <text x="28" y="38" text-anchor="middle" fill="#006c49" style="font-family:'Display','Helvetica',sans-serif;font-weight:700;font-size:16px">✓</text>
+      <text class="meta" x="54" y="28" fill="#131b2e" style="font-weight:700;font-size:17px">Economia hoje</text>
+      <text class="meta" x="54" y="50" fill="#006c49" style="font-weight:700;font-size:22px">R$ 32,50</text>
+    </g>
+
+    <g transform="translate(24 258)">
+      <rect width="222" height="52" rx="16" fill="#eaedff" />
+      <circle cx="26" cy="26" r="13" fill="#006c49" />
+      <text x="26" y="31" text-anchor="middle" fill="#ffffff" style="font-family:'Display','Helvetica',sans-serif;font-weight:700;font-size:14px">+</text>
+      <text class="meta" x="50" y="24" fill="#131b2e" style="font-weight:700;font-size:16px">Café Especial 500g</text>
+      <text class="meta" x="50" y="42" fill="#3c4a42" style="font-size:15px">2 un · R$ 37,80</text>
+    </g>
+
+    <g transform="translate(24 320)">
+      <rect width="222" height="42" rx="21" fill="#10b981" />
+      <text x="111" y="27" text-anchor="middle" fill="#ffffff" style="font-family:'Display','Helvetica',sans-serif;font-weight:700;font-size:16px">Ir ao caixa</text>
+    </g>
+  </g>
+
+  <g transform="translate(80 596)">
+    <text class="tag" x="0" y="0" fill="#6c7a71">TANSTACK START · SQLITE · BETTER AUTH · TDD · PWA</text>
+  </g>
+</svg>

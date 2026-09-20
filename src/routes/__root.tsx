@@ -6,6 +6,11 @@ import { AuthContext } from '../auth/session-context'
 import { BottomNav } from '../components/BottomNav'
 import { fetchSession } from '../server/functions/session'
 
+const SITE_URL = (process.env.BETTER_AUTH_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+const SITE_TITLE = 'CarrinhoSmart — carrinho inteligente e controle de orçamento'
+const SITE_DESCRIPTION =
+  'Bipe produtos, acompanhe o gasto em tempo real contra sua meta, gerencie a lista de compras e feche a compra com recibo e resumo por categoria.'
+
 const PUBLIC_PATHS = ['/login', '/signup']
 
 export const Route = createRootRoute({
@@ -32,17 +37,39 @@ export const Route = createRootRoute({
         name: 'viewport',
         content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover',
       },
-      { title: 'CarrinhoSmart' },
-      {
-        name: 'description',
-        content: 'Carrinho inteligente e controle de orçamento de supermercado.',
-      },
+      { title: SITE_TITLE },
+      { name: 'description', content: SITE_DESCRIPTION },
       { name: 'theme-color', content: '#006c49' },
       { name: 'application-name', content: 'CarrinhoSmart' },
       { name: 'mobile-web-app-capable', content: 'yes' },
       { name: 'apple-mobile-web-app-capable', content: 'yes' },
       { name: 'apple-mobile-web-app-title', content: 'CarrinhoSmart' },
       { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+
+      { property: 'og:type', content: 'website' },
+      { property: 'og:site_name', content: 'CarrinhoSmart' },
+      { property: 'og:title', content: SITE_TITLE },
+      { property: 'og:description', content: SITE_DESCRIPTION },
+      { property: 'og:url', content: SITE_URL },
+      { property: 'og:image', content: `${SITE_URL}/og.png` },
+      { property: 'og:image:secure_url', content: `${SITE_URL}/og.png` },
+      { property: 'og:image:type', content: 'image/png' },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
+      {
+        property: 'og:image:alt',
+        content: 'CarrinhoSmart — bipe, controle e economize no mercado',
+      },
+      { property: 'og:locale', content: 'pt_BR' },
+
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: SITE_TITLE },
+      { name: 'twitter:description', content: SITE_DESCRIPTION },
+      { name: 'twitter:image', content: `${SITE_URL}/og.png` },
+      {
+        name: 'twitter:image:alt',
+        content: 'CarrinhoSmart — bipe, controle e economize no mercado',
+      },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
