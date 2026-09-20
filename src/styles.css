@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #faf8ff;
+  --color-surface-dim: #d2d9f4;
+  --color-surface-bright: #faf8ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f2f3ff;
+  --color-surface-container: #eaedff;
+  --color-surface-container-high: #e2e7ff;
+  --color-surface-container-highest: #dae2fd;
+  --color-on-surface: #131b2e;
+  --color-on-surface-variant: #3c4a42;
+  --color-outline: #6c7a71;
+  --color-outline-variant: #bbcabf;
+
+  --color-primary: #006c49;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #10b981;
+  --color-on-primary-container: #00422b;
+  --color-primary-fixed: #6ffbbe;
+  --color-primary-fixed-dim: #4edea3;
+
+  --color-secondary: #855300;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #fea619;
+  --color-on-secondary-container: #684000;
+  --color-secondary-fixed: #ffddb8;
+  --color-secondary-fixed-dim: #ffb95f;
+
+  --color-tertiary: #1b6b51;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #67b193;
+  --color-tertiary-fixed: #a6f2d1;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --color-inverse-surface: #283044;
+  --color-inverse-on-surface: #eef0ff;
+
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #app {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.material-symbols-outlined.fill {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
