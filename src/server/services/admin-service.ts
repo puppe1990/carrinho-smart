@@ -276,8 +276,7 @@ export function getOverview(repo: Repository): AdminOverview {
 }
 
 export function listUsers(repo: Repository, filter: PageFilter = {}): ListResult<AdminUserRecord> {
-  const page = Math.max(1, filter.page ?? 1)
-  const pageSize = Math.min(100, Math.max(1, filter.pageSize ?? 20))
+  const { page, pageSize } = clampPage(filter)
   const items = repo.users.list({
     search: filter.search,
     limit: pageSize,
