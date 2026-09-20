@@ -13,6 +13,21 @@ describe('slugify', () => {
   it('apara hífens nas pontas', () => {
     expect(slugify('  --Leite--  ')).toBe('leite')
   })
+
+  it('aplica minúsculas em Unicode', () => {
+    expect(slugify('ÁGUA')).toBe('agua')
+  })
+
+  it('não deixa hífen à direita ao truncar nomes longos', () => {
+    const long = `${'a'.repeat(47)} b`
+    const slug = slugify(long)
+    expect(slug).toHaveLength(47)
+    expect(slug.endsWith('-')).toBe(false)
+  })
+
+  it('retorna vazio quando não há caracteres válidos', () => {
+    expect(slugify('')).toBe('')
+  })
 })
 
 describe('uniqueSlug', () => {
@@ -27,5 +42,9 @@ describe('uniqueSlug', () => {
 
   it('usa "item" quando o nome não gera slug', () => {
     expect(uniqueSlug('!!!', () => false)).toBe('item')
+  })
+
+  it('aplica sufixo ao fallback quando "item" já existe', () => {
+    expect(uniqueSlug('!!!', (candidate) => candidate === 'item')).toBe('item-2')
   })
 })

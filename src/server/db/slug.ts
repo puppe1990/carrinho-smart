@@ -5,8 +5,8 @@ export function slugify(value: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
     .slice(0, 48)
+    .replace(/^-+|-+$/g, '')
 }
 
 /** Gera um slug único consultando `exists` e adicionando sufixo numérico se preciso. */
