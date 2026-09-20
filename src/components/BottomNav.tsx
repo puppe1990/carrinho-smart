@@ -1,7 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { Icon } from './Icon'
 
-const HIDDEN_PREFIXES = ['/scanner', '/compra']
+const HIDDEN_PREFIXES = ['/scanner', '/compra', '/login', '/signup']
 
 const ITEMS = [
   { to: '/', label: 'Carrinho', icon: 'shopping_cart' },

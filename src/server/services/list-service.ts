@@ -20,31 +20,58 @@ const EMPTY_PROGRESS: ListProgress = {
   scannedTotalCents: 0,
 }
 
-export function getShoppingListOverview(repo: Repository): ShoppingListOverview {
-  const list = repo.lists.getActive()
+function requireOwnedList(repo: Repository, userId: string, listId: string): ShoppingList {
+  const list = repo.lists.get(listId)
+  if (!list || list.userId !== userId) throw new Error('Lista não encontrada para este usuário')
+  return list
+}
+
+function requireOwnedItem(
+  repo: Repository,
+  userId: string,
+  itemId: string,
+): { item: ListItem; listId: string } {
+  const item = repo.lists.getItem(itemId)
+  const listId = repo.lists.listIdForItem(itemId)
+  if (!item || !listId) throw new Error('Item da lista não encontrado')
+  requireOwnedList(repo, userId, listId)
+  return { item, listId }
+}
+
+export function getShoppingListOverview(repo: Repository, userId: string): ShoppingListOverview {
+  const list = repo.lists.getActive(userId)
   if (!list) return { list: null, items: [], progress: EMPTY_PROGRESS }
   const items = repo.lists.listItems(list.id)
   return { list, items, progress: listProgress(items) }
 }
 
-export function addQuickItem(repo: Repository, listId: string, name: string): ListItem {
+export function addQuickItem(
+  repo: Repository,
+  userId: string,
+  listId: string,
+  name: string,
+): ListItem {
+  requireOwnedList(repo, userId, listId)
   const draft = quickAddItem(name)
   return repo.lists.addItem(listId, { name: draft.name })
 }
 
-export function removeListItem(repo: Repository, itemId: string): ListProgress {
-  const listId = repo.lists.listIdForItem(itemId)
+export function removeListItem(repo: Repository, userId: string, itemId: string): ListProgress {
+  const { listId } = requireOwnedItem(repo, userId, itemId)
   repo.lists.removeItem(itemId)
-  return listId ? repo.lists.progress(listId) : EMPTY_PROGRESS
+  return repo.lists.progress(listId)
 }
 
 export function scanListItem(
   repo: Repository,
+  userId: string,
   itemId: string,
   input: { cartId: string; unitPriceCents: number; quantity?: number; promo?: boolean },
 ): { line: CartLine; item: ListItem; progress: ListProgress } {
-  const item = repo.lists.getItem(itemId)
-  if (!item) throw new Error('Item da lista não encontrado')
+  const { item, listId } = requireOwnedItem(repo, userId, itemId)
+
+  const cart = repo.carts.get(input.cartId, userId)
+  if (!cart) throw new Error('Carrinho não encontrado para este usuário')
 
   const product = item.productId ? repo.products.get(item.productId) : null
   const quantity = input.quantity ?? 1
@@ -67,14 +94,11 @@ export function scanListItem(
     'scanned',
     roundCents(input.unitPriceCents * quantity),
   )
-  const listId = repo.lists.listIdForItem(item.id)
-  return {
-    line,
-    item: updated,
-    progress: listId ? repo.lists.progress(listId) : EMPTY_PROGRESS,
-  }
+
+  return { line, item: updated, progress: repo.lists.progress(listId) }
 }
 
-export function resetListItem(repo: Repository, itemId: string): ListItem {
+export function resetListItem(repo: Repository, userId: string, itemId: string): ListItem {
+  requireOwnedItem(repo, userId, itemId)
   return repo.lists.setStatus(itemId, 'pending', null)
 }

@@ -29,12 +29,14 @@ CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
 
 CREATE TABLE IF NOT EXISTS shopping_lists (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   shopping_date TEXT NOT NULL,
   budget_cents INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'active',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_shopping_lists_user ON shopping_lists(user_id);
 
 CREATE TABLE IF NOT EXISTS list_items (
   id TEXT PRIMARY KEY,
@@ -53,6 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_list_items_list ON list_items(list_id);
 
 CREATE TABLE IF NOT EXISTS carts (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
   store_id TEXT NOT NULL REFERENCES stores(id),
   list_id TEXT REFERENCES shopping_lists(id),
   budget_cents INTEGER NOT NULL DEFAULT 0,
@@ -60,7 +63,7 @@ CREATE TABLE IF NOT EXISTS carts (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   closed_at TEXT
 );
-CREATE INDEX IF NOT EXISTS idx_carts_status ON carts(status);
+CREATE INDEX IF NOT EXISTS idx_carts_user_status ON carts(user_id, status);
 
 CREATE TABLE IF NOT EXISTS cart_items (
   id TEXT PRIMARY KEY,
@@ -84,6 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_cart_items_cart ON cart_items(cart_id);
 
 CREATE TABLE IF NOT EXISTS purchases (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
   store_id TEXT NOT NULL REFERENCES stores(id),
   list_id TEXT REFERENCES shopping_lists(id),
   budget_cents INTEGER NOT NULL DEFAULT 0,
@@ -92,7 +96,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   item_count INTEGER NOT NULL DEFAULT 0,
   purchased_at TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(purchased_at);
+CREATE INDEX IF NOT EXISTS idx_purchases_user_date ON purchases(user_id, purchased_at);
 
 CREATE TABLE IF NOT EXISTS purchase_items (
   id TEXT PRIMARY KEY,
@@ -109,18 +113,47 @@ CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items(purchas
 
 CREATE TABLE IF NOT EXISTS price_history (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
   product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   store_id TEXT REFERENCES stores(id),
   price_cents INTEGER NOT NULL,
   recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-CREATE INDEX IF NOT EXISTS idx_price_history_product ON price_history(product_id);
+CREATE INDEX IF NOT EXISTS idx_price_history_user_product ON price_history(user_id, product_id);
 `
+
+export interface MigratableStatement {
+  all(): Array<Record<string, unknown>>
+}
 
 export interface MigratableDatabase {
   exec(sql: string): unknown
+  prepare(sql: string): MigratableStatement
+}
+
+const USER_SCOPED_COLUMNS: Array<{ table: string; column: string; ddl: string }> = [
+  { table: 'shopping_lists', column: 'user_id', ddl: "user_id TEXT NOT NULL DEFAULT ''" },
+  { table: 'carts', column: 'user_id', ddl: "user_id TEXT NOT NULL DEFAULT ''" },
+  { table: 'purchases', column: 'user_id', ddl: "user_id TEXT NOT NULL DEFAULT ''" },
+  { table: 'price_history', column: 'user_id', ddl: "user_id TEXT NOT NULL DEFAULT ''" },
+]
+
+function hasColumn(db: MigratableDatabase, table: string, column: string): boolean {
+  return db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all()
+    .some((row) => row.name === column)
+}
+
+function ensureColumns(db: MigratableDatabase): void {
+  for (const { table, column, ddl } of USER_SCOPED_COLUMNS) {
+    if (!hasColumn(db, table, column)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`)
+    }
+  }
 }
 
 export function migrate(db: MigratableDatabase): void {
   db.exec(SCHEMA_SQL)
+  ensureColumns(db)
 }

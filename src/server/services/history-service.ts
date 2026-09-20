@@ -40,9 +40,9 @@ export function monthLabel(year: number, month: number): string {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
-export function listAvailableMonths(repo: Repository): MonthRef[] {
+export function listAvailableMonths(repo: Repository, userId: string): MonthRef[] {
   const seen = new Map<string, MonthRef>()
-  for (const purchase of repo.purchases.list()) {
+  for (const purchase of repo.purchases.list(userId)) {
     const date = new Date(purchase.purchasedAt)
     const year = date.getFullYear()
     const month = date.getMonth() + 1
@@ -54,6 +54,7 @@ export function listAvailableMonths(repo: Repository): MonthRef[] {
 
 export function getHistory(
   repo: Repository,
+  userId: string,
   year: number,
   month: number,
 ): {
@@ -64,7 +65,7 @@ export function getHistory(
   stores: ReturnType<Repository['stores']['list']>
   overview: MonthlyOverview
 } {
-  const purchases = repo.purchases.listForMonth(year, month)
+  const purchases = repo.purchases.listForMonth(userId, year, month)
   const budgetCents = purchases.reduce((sum, purchase) => sum + purchase.budgetCents, 0)
   return {
     year,
@@ -92,8 +93,12 @@ function enrichDistribution(
   })
 }
 
-export function getPurchaseSummary(repo: Repository, purchaseId: string): PurchaseSummary | null {
-  const purchase = repo.purchases.get(purchaseId)
+export function getPurchaseSummary(
+  repo: Repository,
+  userId: string,
+  purchaseId: string,
+): PurchaseSummary | null {
+  const purchase = repo.purchases.get(purchaseId, userId)
   if (!purchase) return null
 
   const items = repo.purchases.getItems(purchaseId)
@@ -118,8 +123,13 @@ export interface MonthSummary {
   stores: ReturnType<Repository['stores']['list']>
 }
 
-export function getMonthSummary(repo: Repository, year: number, month: number): MonthSummary {
-  const purchases = repo.purchases.listForMonth(year, month)
+export function getMonthSummary(
+  repo: Repository,
+  userId: string,
+  year: number,
+  month: number,
+): MonthSummary {
+  const purchases = repo.purchases.listForMonth(userId, year, month)
   const items = purchases.flatMap((purchase) => repo.purchases.getItems(purchase.id))
   const budgetCents = purchases.reduce((sum, purchase) => sum + purchase.budgetCents, 0)
 

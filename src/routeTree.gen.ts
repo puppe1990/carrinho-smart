@@ -12,9 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as ListaRouteImport } from './routes/lista'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResumoRouteImport } from './routes/resumo'
 import { Route as ScannerRouteImport } from './routes/scanner'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as CompraPurchaseIdRouteImport } from './routes/compra.$purchaseId'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,6 +34,11 @@ const ListaRoute = ListaRouteImport.update({
   path: '/lista',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResumoRoute = ResumoRouteImport.update({
   id: '/resumo',
   path: '/resumo',
@@ -41,9 +49,19 @@ const ScannerRoute = ScannerRouteImport.update({
   path: '/scanner',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompraPurchaseIdRoute = CompraPurchaseIdRouteImport.update({
   id: '/compra/$purchaseId',
   path: '/compra/$purchaseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -51,26 +69,35 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/historico': typeof HistoricoRoute
   '/lista': typeof ListaRoute
+  '/login': typeof LoginRoute
   '/resumo': typeof ResumoRoute
   '/scanner': typeof ScannerRoute
+  '/signup': typeof SignupRoute
   '/compra/$purchaseId': typeof CompraPurchaseIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/historico': typeof HistoricoRoute
   '/lista': typeof ListaRoute
+  '/login': typeof LoginRoute
   '/resumo': typeof ResumoRoute
   '/scanner': typeof ScannerRoute
+  '/signup': typeof SignupRoute
   '/compra/$purchaseId': typeof CompraPurchaseIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/historico': typeof HistoricoRoute
   '/lista': typeof ListaRoute
+  '/login': typeof LoginRoute
   '/resumo': typeof ResumoRoute
   '/scanner': typeof ScannerRoute
+  '/signup': typeof SignupRoute
   '/compra/$purchaseId': typeof CompraPurchaseIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -78,34 +105,46 @@ export interface FileRouteTypes {
     | '/'
     | '/historico'
     | '/lista'
+    | '/login'
     | '/resumo'
     | '/scanner'
+    | '/signup'
     | '/compra/$purchaseId'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/historico'
     | '/lista'
+    | '/login'
     | '/resumo'
     | '/scanner'
+    | '/signup'
     | '/compra/$purchaseId'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/historico'
     | '/lista'
+    | '/login'
     | '/resumo'
     | '/scanner'
+    | '/signup'
     | '/compra/$purchaseId'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HistoricoRoute: typeof HistoricoRoute
   ListaRoute: typeof ListaRoute
+  LoginRoute: typeof LoginRoute
   ResumoRoute: typeof ResumoRoute
   ScannerRoute: typeof ScannerRoute
+  SignupRoute: typeof SignupRoute
   CompraPurchaseIdRoute: typeof CompraPurchaseIdRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -131,6 +170,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/resumo': {
       id: '/resumo'
       path: '/resumo'
@@ -145,11 +191,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScannerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/compra/$purchaseId': {
       id: '/compra/$purchaseId'
       path: '/compra/$purchaseId'
       fullPath: '/compra/$purchaseId'
       preLoaderRoute: typeof CompraPurchaseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -159,9 +219,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HistoricoRoute: HistoricoRoute,
   ListaRoute: ListaRoute,
+  LoginRoute: LoginRoute,
   ResumoRoute: ResumoRoute,
   ScannerRoute: ScannerRoute,
+  SignupRoute: SignupRoute,
   CompraPurchaseIdRoute: CompraPurchaseIdRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

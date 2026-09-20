@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useRouter } from '@tanstack/react-router'
+import { useAuthUser } from '../auth/session-context'
+import { authClient } from '../lib/auth-client'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
 
@@ -183,16 +185,83 @@ export function ScreenHeader({
             </button>
           </div>
         </div>
-        <button
-          type="button"
-          aria-label="Notificações"
-          className="relative flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container active:scale-95"
-        >
-          <Icon name="notifications" className="text-[22px]" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-secondary-container ring-2 ring-surface" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            aria-label="Notificações"
+            className="relative flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container active:scale-95"
+          >
+            <Icon name="notifications" className="text-[22px]" />
+            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-secondary-container ring-2 ring-surface" />
+          </button>
+          <UserMenu />
+        </div>
       </div>
     </header>
+  )
+}
+
+export function UserMenu() {
+  const user = useAuthUser()
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const initials = (user?.name ?? '?')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
+
+  async function handleSignOut() {
+    setLoading(true)
+    try {
+      await authClient.signOut()
+      setOpen(false)
+      await router.invalidate()
+      await router.navigate({ to: '/login' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Conta"
+        onClick={() => setOpen(true)}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-on-primary transition-transform active:scale-95"
+      >
+        {initials || <Icon name="person" className="text-[18px]" />}
+      </button>
+
+      <Sheet open={open} onClose={() => setOpen(false)} title="Sua conta">
+        <div className="flex items-center gap-3 rounded-xl bg-surface-container-low p-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-sm font-bold text-on-primary">
+            {initials || <Icon name="person" />}
+          </div>
+          <div className="min-w-0">
+            <span className="block truncate text-sm font-bold text-on-surface">
+              {user?.name ?? 'Visitante'}
+            </span>
+            <span className="block truncate text-[11px] text-on-surface-variant">
+              {user?.email ?? ''}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={handleSignOut}
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-error-container text-sm font-bold text-on-error-container disabled:opacity-60"
+        >
+          <Icon name="logout" className="text-[20px]" />
+          {loading ? 'Saindo...' : 'Sair da conta'}
+        </button>
+      </Sheet>
+    </>
   )
 }
 

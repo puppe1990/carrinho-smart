@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getRepo } from '../db/runtime'
+import { requireSession } from '../auth/session'
+import type { NewCartLine } from '../db/models'
 import {
   addLine,
   checkout,
@@ -9,32 +10,52 @@ import {
   setBudget,
   updateLineQuantity,
 } from '../services/cart-service'
-import type { NewCartLine } from '../db/models'
 
 export const fetchCartOverview = createServerFn({ method: 'GET' })
   .validator((data: { storeId?: string } | undefined) => data ?? {})
-  .handler(({ data }) => getCartOverview(getRepo(), data.storeId))
+  .handler(async ({ data }) => {
+    const { repo, user } = await requireSession()
+    return getCartOverview(repo, user.id, data.storeId)
+  })
 
 export const changeBudget = createServerFn({ method: 'POST' })
   .validator((data: { cartId: string; budgetCents: number }) => data)
-  .handler(({ data }) => setBudget(getRepo(), data.cartId, data.budgetCents))
+  .handler(async ({ data }) => {
+    const { repo, user } = await requireSession()
+    return setBudget(repo, user.id, data.cartId, data.budgetCents)
+  })
 
 export const addCartItem = createServerFn({ method: 'POST' })
   .validator((data: { cartId: string; line: NewCartLine }) => data)
-  .handler(({ data }) => addLine(getRepo(), data.cartId, data.line))
+  .handler(async ({ data }) => {
+    const { repo, user } = await requireSession()
+    return addLine(repo, user.id, data.cartId, data.line)
+  })
 
 export const changeCartItemQuantity = createServerFn({ method: 'POST' })
   .validator((data: { lineId: string; quantity: number }) => data)
-  .handler(({ data }) => updateLineQuantity(getRepo(), data.lineId, data.quantity))
+  .handler(async ({ data }) => {
+    const { repo, user } = await requireSession()
+    return updateLineQuantity(repo, user.id, data.lineId, data.quantity)
+  })
 
 export const deleteCartItem = createServerFn({ method: 'POST' })
   .validator((data: { lineId: string }) => data)
-  .handler(({ data }) => removeLine(getRepo(), data.lineId))
+  .handler(async ({ data }) => {
+    const { repo, user } = await requireSession()
+    return removeLine(repo, user.id, data.lineId)
+  })
 
 export const emptyCart = createServerFn({ method: 'POST' })
   .validator((data: { cartId: string }) => data)
-  .handler(({ data }) => clearCart(getRepo(), data.cartId))
+  .handler(async ({ data }) => {
+    const { repo, user } = await requireSession()
+    return clearCart(repo, user.id, data.cartId)
+  })
 
 export const finishCart = createServerFn({ method: 'POST' })
   .validator((data: { cartId: string }) => data)
-  .handler(({ data }) => checkout(getRepo(), data.cartId))
+  .handler(async ({ data }) => {
+    const { repo, user } = await requireSession()
+    return checkout(repo, user.id, data.cartId)
+  })

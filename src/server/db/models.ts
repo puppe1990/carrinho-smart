@@ -29,6 +29,7 @@ export interface Product {
 
 export interface ShoppingList {
   id: string
+  userId: string
   name: string
   shoppingDate: string
   budgetCents: number
@@ -37,6 +38,7 @@ export interface ShoppingList {
 
 export interface Cart {
   id: string
+  userId: string
   storeId: string
   listId: string | null
   budgetCents: number
@@ -91,6 +93,7 @@ export interface NewListItem {
 
 export interface NewPurchase {
   id?: string
+  userId: string
   storeId: string
   listId?: string | null
   budgetCents: number

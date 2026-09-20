@@ -2,6 +2,9 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { createDatabase, type Database } from './client'
 import { createRepository, type Repository } from './repositories'
 
+const USER = 'user-1'
+const OTHER_USER = 'user-2'
+
 let db: Database
 let repo: Repository
 
@@ -44,6 +47,13 @@ describe('schema', () => {
   it('migrates twice without error', () => {
     expect(() => createDatabase(':memory:')).not.toThrow()
   })
+
+  it('adds user scoping columns to personal tables', () => {
+    for (const table of ['carts', 'shopping_lists', 'purchases', 'price_history']) {
+      const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+      expect(columns.map((column) => column.name)).toContain('user_id')
+    }
+  })
 })
 
 describe('product repository', () => {
@@ -66,13 +76,41 @@ describe('product repository', () => {
 
 describe('cart repository', () => {
   it('reuses the active cart for a store', () => {
-    const first = repo.carts.getOrCreateActive({ storeId: 'store-1', budgetCents: 35000 })
-    const second = repo.carts.getOrCreateActive({ storeId: 'store-1', budgetCents: 35000 })
+    const first = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
+    const second = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
     expect(second.id).toBe(first.id)
   })
 
+  it('keeps carts isolated per user', () => {
+    const mine = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
+    const theirs = repo.carts.getOrCreateActive({
+      userId: OTHER_USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
+    expect(theirs.id).not.toBe(mine.id)
+    expect(repo.carts.get(mine.id, OTHER_USER)).toBeNull()
+    expect(repo.carts.getActive(OTHER_USER, 'store-1')?.userId).toBe(OTHER_USER)
+  })
+
   it('adds, updates and removes lines', () => {
-    const cart = repo.carts.getOrCreateActive({ storeId: 'store-1', budgetCents: 35000 })
+    const cart = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
     const line = repo.carts.addLine(cart.id, {
       name: 'Café',
       categoryId: 'mercearia',
@@ -91,7 +129,11 @@ describe('cart repository', () => {
   })
 
   it('maps persisted lines into domain shape', () => {
-    const cart = repo.carts.getOrCreateActive({ storeId: 'store-1', budgetCents: 35000 })
+    const cart = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
     repo.carts.addLine(cart.id, {
       name: 'Banana',
       categoryId: 'hortifruti',
@@ -113,7 +155,11 @@ describe('cart repository', () => {
   })
 
   it('summarises totals and savings consistently with the domain', () => {
-    const cart = repo.carts.getOrCreateActive({ storeId: 'store-1', budgetCents: 35000 })
+    const cart = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
     repo.carts.addLine(cart.id, {
       name: 'Café',
       categoryId: 'mercearia',
@@ -127,7 +173,11 @@ describe('cart repository', () => {
   })
 
   it('updates the budget and clears the cart', () => {
-    const cart = repo.carts.getOrCreateActive({ storeId: 'store-1', budgetCents: 35000 })
+    const cart = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
     repo.carts.addLine(cart.id, {
       name: 'Café',
       categoryId: 'mercearia',
@@ -135,8 +185,8 @@ describe('cart repository', () => {
       listPriceCents: 1890,
       quantity: 1,
     })
-    repo.carts.updateBudget(cart.id, 40000)
-    expect(repo.carts.get(cart.id)?.budgetCents).toBe(40000)
+    repo.carts.updateBudget(cart.id, USER, 40000)
+    expect(repo.carts.get(cart.id, USER)?.budgetCents).toBe(40000)
 
     repo.carts.clear(cart.id)
     expect(repo.carts.listLines(cart.id)).toHaveLength(0)
@@ -144,7 +194,11 @@ describe('cart repository', () => {
 
   it('checks out into a purchase and records price history', () => {
     seedProduct()
-    const cart = repo.carts.getOrCreateActive({ storeId: 'store-1', budgetCents: 35000 })
+    const cart = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
     repo.carts.addLine(cart.id, {
       productId: 'prod-1',
       name: 'Café Torrado Especial 500g',
@@ -160,12 +214,16 @@ describe('cart repository', () => {
     expect(purchase.savingsCents).toBe(400)
     expect(purchase.itemCount).toBe(1)
 
-    expect(repo.carts.get(cart.id)?.status).toBe('checked_out')
+    expect(repo.carts.get(cart.id, USER)?.status).toBe('checked_out')
     expect(repo.carts.listLines(cart.id)).toHaveLength(0)
     expect(repo.purchases.getItems(purchase.id)).toHaveLength(1)
-    expect(repo.priceHistory.lastForProduct('prod-1')?.priceCents).toBe(1890)
+    expect(repo.priceHistory.lastForProduct(USER, 'prod-1')?.priceCents).toBe(1890)
 
-    const fresh = repo.carts.getOrCreateActive({ storeId: 'store-1', budgetCents: 35000 })
+    const fresh = repo.carts.getOrCreateActive({
+      userId: USER,
+      storeId: 'store-1',
+      budgetCents: 35000,
+    })
     expect(fresh.id).not.toBe(cart.id)
   })
 })
@@ -174,6 +232,7 @@ describe('shopping list repository', () => {
   it('creates a list with items and tracks progress', () => {
     seedProduct()
     const list = repo.lists.create({
+      userId: USER,
       name: 'Compras do Mês',
       shoppingDate: '2024-05-24',
       budgetCents: 35000,
@@ -206,8 +265,20 @@ describe('shopping list repository', () => {
     expect(items.find((i) => i.id === pending.id)?.status).toBe('pending')
   })
 
+  it('keeps the active list isolated per user', () => {
+    repo.lists.create({ userId: USER, name: 'Minha lista', shoppingDate: '2024-05-24' })
+    repo.lists.create({ userId: OTHER_USER, name: 'Lista do outro', shoppingDate: '2024-05-24' })
+    expect(repo.lists.getActive(USER)?.name).toBe('Minha lista')
+    expect(repo.lists.getActive(OTHER_USER)?.name).toBe('Lista do outro')
+  })
+
   it('removes items', () => {
-    const list = repo.lists.create({ name: 'Lista', shoppingDate: '2024-05-24', budgetCents: 0 })
+    const list = repo.lists.create({
+      userId: USER,
+      name: 'Lista',
+      shoppingDate: '2024-05-24',
+      budgetCents: 0,
+    })
     const item = repo.lists.addItem(list.id, { name: 'Arroz' })
     repo.lists.removeItem(item.id)
     expect(repo.lists.listItems(list.id)).toHaveLength(0)
@@ -215,10 +286,11 @@ describe('shopping list repository', () => {
 })
 
 describe('purchase repository', () => {
-  it('filters purchases by month and exposes items', () => {
+  it('filters purchases by user and month and exposes items', () => {
     repo.purchases.create(
       {
         id: 'pur-1',
+        userId: USER,
         storeId: 'store-1',
         budgetCents: 35000,
         totalCents: 31470,
@@ -239,6 +311,7 @@ describe('purchase repository', () => {
     )
     repo.purchases.create({
       id: 'pur-2',
+      userId: OTHER_USER,
       storeId: 'store-1',
       budgetCents: 35000,
       totalCents: 10000,
@@ -247,29 +320,35 @@ describe('purchase repository', () => {
       purchasedAt: '2024-06-02T10:00:00.000Z',
     })
 
-    const may = repo.purchases.listForMonth(2024, 5)
+    const may = repo.purchases.listForMonth(USER, 2024, 5)
     expect(may.map((p) => p.id)).toEqual(['pur-1'])
     expect(may[0].storeName).toBe('Pão de Açúcar - Morumbi')
     expect(repo.purchases.getItems('pur-1')[0].name).toBe('Café')
+
+    expect(repo.purchases.list(OTHER_USER).map((p) => p.id)).toEqual(['pur-2'])
+    expect(repo.purchases.get('pur-1', OTHER_USER)).toBeNull()
   })
 })
 
 describe('price history repository', () => {
-  it('returns the most recent price first', () => {
+  it('keeps price history isolated per user and returns the most recent first', () => {
     seedProduct()
     repo.priceHistory.record({
+      userId: USER,
       productId: 'prod-1',
       storeId: 'store-1',
       priceCents: 3650,
       recordedAt: '2024-05-01T10:00:00.000Z',
     })
     repo.priceHistory.record({
+      userId: USER,
       productId: 'prod-1',
       storeId: 'store-1',
       priceCents: 3890,
       recordedAt: '2024-05-24T10:00:00.000Z',
     })
-    expect(repo.priceHistory.lastForProduct('prod-1')?.priceCents).toBe(3890)
-    expect(repo.priceHistory.historyForProduct('prod-1')).toHaveLength(2)
+    expect(repo.priceHistory.lastForProduct(USER, 'prod-1')?.priceCents).toBe(3890)
+    expect(repo.priceHistory.historyForProduct(USER, 'prod-1')).toHaveLength(2)
+    expect(repo.priceHistory.lastForProduct(OTHER_USER, 'prod-1')).toBeNull()
   })
 })

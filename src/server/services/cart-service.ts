@@ -25,19 +25,36 @@ export interface CartMutationResult {
   budget: BudgetStatus
 }
 
-function resolveStore(repo: Repository, storeId?: string): Store {
-  const store = (storeId ? repo.stores.get(storeId) : null) ?? repo.stores.list()[0]
-  if (!store) throw new Error('Nenhuma loja cadastrada. Rode o seed do banco de dados.')
-  return store
+function resolveStore(repo: Repository, userId: string, storeId?: string): Store {
+  if (storeId) {
+    const requested = repo.stores.get(storeId)
+    if (requested) return requested
+  }
+
+  const activeCart = repo.carts.getLatestActive(userId)
+  if (activeCart) {
+    const cartStore = repo.stores.get(activeCart.storeId)
+    if (cartStore) return cartStore
+  }
+
+  const fallback = repo.stores.list()[0]
+  if (!fallback) throw new Error('Nenhuma loja cadastrada. Rode o seed do banco de dados.')
+  return fallback
 }
 
-export function getCartOverview(repo: Repository, storeId?: string): CartOverview {
-  const store = resolveStore(repo, storeId)
-  const cart = repo.carts.getOrCreateActive({ storeId: store.id, budgetCents: 35000 })
+function requireCart(repo: Repository, cartId: string, userId: string): Cart {
+  const cart = repo.carts.get(cartId, userId)
+  if (!cart) throw new Error('Carrinho não encontrado para este usuário')
+  return cart
+}
+
+export function getCartOverview(repo: Repository, userId: string, storeId?: string): CartOverview {
+  const store = resolveStore(repo, userId, storeId)
+  const cart = repo.carts.getOrCreateActive({ userId, storeId: store.id, budgetCents: 35000 })
   const lines = repo.carts.listLines(cart.id)
   const summary = cartSummary(lines)
 
-  const list = cart.listId ? repo.lists.get(cart.listId) : repo.lists.getActive()
+  const list = cart.listId ? repo.lists.get(cart.listId) : repo.lists.getActive(userId)
   const listItems = list ? repo.lists.listItems(list.id) : []
   const extraItems = detectExtraItems(listItems, lines)
   const nextPendingName = listItems.find((item) => item.status === 'pending')?.name ?? null
@@ -62,8 +79,14 @@ export function getCartOverview(repo: Repository, storeId?: string): CartOvervie
   }
 }
 
-export function setBudget(repo: Repository, cartId: string, budgetCents: number): Cart {
-  return repo.carts.updateBudget(cartId, budgetCents)
+export function setBudget(
+  repo: Repository,
+  userId: string,
+  cartId: string,
+  budgetCents: number,
+): Cart {
+  requireCart(repo, cartId, userId)
+  return repo.carts.updateBudget(cartId, userId, budgetCents)
 }
 
 export function mutate(repo: Repository, cartId: string): CartMutationResult {
@@ -74,36 +97,43 @@ export function mutate(repo: Repository, cartId: string): CartMutationResult {
 
 export function addLine(
   repo: Repository,
+  userId: string,
   cartId: string,
   input: NewCartLine,
 ): { line: CartLine } & CartMutationResult {
+  requireCart(repo, cartId, userId)
   const line = repo.carts.addLine(cartId, input)
   return { line, ...mutate(repo, cartId) }
 }
 
 export function updateLineQuantity(
   repo: Repository,
+  userId: string,
   lineId: string,
   quantity: number,
 ): { line: CartLine } & CartMutationResult {
-  const cartId = repo.carts.cartIdForLine(lineId) ?? ''
+  const cartId = repo.carts.cartIdForLine(lineId)
+  if (!cartId) throw new Error('Item do carrinho não encontrado')
+  requireCart(repo, cartId, userId)
   const line = repo.carts.updateQuantity(lineId, quantity)
   return { line, ...mutate(repo, cartId) }
 }
 
-export function removeLine(repo: Repository, lineId: string): CartSummary {
+export function removeLine(repo: Repository, userId: string, lineId: string): CartSummary {
   const cartId = repo.carts.cartIdForLine(lineId)
+  if (!cartId) throw new Error('Item do carrinho não encontrado')
+  requireCart(repo, cartId, userId)
   repo.carts.removeLine(lineId)
-  return cartId
-    ? repo.carts.summary(cartId)
-    : { kindCount: 0, unitCount: 0, totalCents: 0, savingsCents: 0 }
+  return repo.carts.summary(cartId)
 }
 
-export function clearCart(repo: Repository, cartId: string): CartSummary {
+export function clearCart(repo: Repository, userId: string, cartId: string): CartSummary {
+  requireCart(repo, cartId, userId)
   repo.carts.clear(cartId)
   return repo.carts.summary(cartId)
 }
 
-export function checkout(repo: Repository, cartId: string): Purchase {
+export function checkout(repo: Repository, userId: string, cartId: string): Purchase {
+  requireCart(repo, cartId, userId)
   return repo.carts.checkout(cartId)
 }

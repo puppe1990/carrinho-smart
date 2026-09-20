@@ -1,10 +1,19 @@
 import { faker } from '@faker-js/faker'
 import type { Database } from './client'
-import { createRepository } from './repositories'
+import { createRepository, type Repository } from './repositories'
+
+export const DEMO_USER_ID = 'user-demo'
+export const DEMO_USER = {
+  id: DEMO_USER_ID,
+  name: 'Família Demo',
+  email: 'demo@carrinhosmart.dev',
+  password: 'demo12345',
+}
 
 export interface SeedOptions {
   seed?: number
   now?: Date
+  userId?: string
 }
 
 export interface SeedResult {
@@ -14,6 +23,7 @@ export interface SeedResult {
   listItemCount: number
   cartLineCount: number
   purchaseCount: number
+  userId: string
 }
 
 const TABLES_IN_DELETE_ORDER = [
@@ -38,6 +48,25 @@ export function resetDatabase(db: Database): void {
   })
   run()
   db.pragma('foreign_keys = ON')
+}
+
+export function clearUserData(db: Database, userId: string): void {
+  const run = db.transaction(() => {
+    db.prepare(
+      'DELETE FROM purchase_items WHERE purchase_id IN (SELECT id FROM purchases WHERE user_id = ?)',
+    ).run(userId)
+    db.prepare('DELETE FROM price_history WHERE user_id = ?').run(userId)
+    db.prepare(
+      'DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE user_id = ?)',
+    ).run(userId)
+    db.prepare('DELETE FROM purchases WHERE user_id = ?').run(userId)
+    db.prepare('DELETE FROM carts WHERE user_id = ?').run(userId)
+    db.prepare(
+      'DELETE FROM list_items WHERE list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)',
+    ).run(userId)
+    db.prepare('DELETE FROM shopping_lists WHERE user_id = ?').run(userId)
+  })
+  run()
 }
 
 const CATEGORIES = [
@@ -132,10 +161,12 @@ function barcodeFor(index: number): string {
   return `789100000${String(index).padStart(4, '0')}`
 }
 
-function daysAgo(now: Date, days: number): string {
-  const date = new Date(now)
-  date.setDate(date.getDate() - days)
-  return date.toISOString()
+function hashSeed(value: string): number {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) % 2147483647
+  }
+  return hash || 1
 }
 
 function randomVariance(basePriceCents: number): number {
@@ -143,19 +174,15 @@ function randomVariance(basePriceCents: number): number {
   return Math.max(99, basePriceCents + delta)
 }
 
-export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResult {
+export function seedCatalog(repo: Repository, options: { seed?: number } = {}): void {
   faker.seed(options.seed ?? 42)
-  const now = options.now ?? new Date()
-  const repo = createRepository(db)
-
-  resetDatabase(db)
 
   for (const category of CATEGORIES) repo.categories.upsert(category)
   for (const store of STORES) repo.stores.insert(store)
 
-  const products = PRODUCT_TEMPLATES.map((template, index) => {
+  PRODUCT_TEMPLATES.forEach((template, index) => {
     const brandOptions = BRANDS[template.categoryId] ?? ['Genérico']
-    return repo.products.insert({
+    repo.products.insert({
       id: `prod-${index + 1}`,
       barcode: barcodeFor(index + 1),
       name: template.name,
@@ -167,9 +194,24 @@ export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResul
       imageUrl: null,
     })
   })
+}
+
+export function seedUserData(
+  db: Database,
+  repo: Repository,
+  userId: string,
+  options: { seed?: number; now?: Date } = {},
+): void {
+  clearUserData(db, userId)
+  faker.seed(options.seed ?? hashSeed(userId))
+
+  const now = options.now ?? new Date()
+  const products = repo.products.list()
+  if (products.length === 0) throw new Error('Catálogo vazio: rode o seed do catálogo primeiro.')
 
   const activeList = repo.lists.create({
-    id: 'list-current',
+    id: `list-${userId}`,
+    userId,
     name: 'Compras do Mês - Família',
     shoppingDate: now.toISOString().slice(0, 10),
     budgetCents: 35000,
@@ -210,6 +252,7 @@ export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResul
   }
 
   const cart = repo.carts.getOrCreateActive({
+    userId,
     storeId: 'store-pao-de-acucar',
     listId: activeList.id,
     budgetCents: 35000,
@@ -234,10 +277,9 @@ export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResul
     })
   })
 
-  let purchaseCount = 0
   for (let monthOffset = 3; monthOffset >= 1; monthOffset -= 1) {
     const purchasesThisMonth = faker.number.int({ min: 1, max: 3 })
-    for (let i = 0; i < purchasesThisMonth; i += 1) {
+    for (let index = 0; index < purchasesThisMonth; index += 1) {
       const date = new Date(
         now.getFullYear(),
         now.getMonth() - monthOffset,
@@ -274,6 +316,7 @@ export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResul
 
       repo.purchases.create(
         {
+          userId,
           storeId: store.id,
           listId: null,
           budgetCents: 35000,
@@ -284,18 +327,44 @@ export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResul
         },
         items,
       )
-      purchaseCount += 1
     }
   }
+}
+
+export function ensureUserData(
+  db: Database,
+  repo: Repository,
+  userId: string,
+  options: { seed?: number; now?: Date } = {},
+): void {
+  const hasList = repo.lists.getActive(userId) !== null
+  const hasPurchases = repo.purchases.list(userId).length > 0
+  if (hasList || hasPurchases) return
+  seedUserData(db, repo, userId, options)
+}
+
+export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResult {
+  const userId = options.userId ?? DEMO_USER_ID
+  const seed = options.seed ?? 42
+  const repo = createRepository(db)
+
+  resetDatabase(db)
+  seedCatalog(repo, { seed })
+  seedUserData(db, repo, userId, { seed, now: options.now })
 
   return {
     categoryCount: repo.categories.list().length,
     storeCount: repo.stores.list().length,
     productCount: repo.products.list().length,
-    listItemCount: repo.lists.listItems(activeList.id).length,
-    cartLineCount: repo.carts.listLines(cart.id).length,
-    purchaseCount,
+    listItemCount: repo.lists.getActive(userId)
+      ? repo.lists.listItems(repo.lists.getActive(userId)!.id).length
+      : 0,
+    cartLineCount: repo.carts.getActive(userId, 'store-pao-de-acucar')
+      ? repo.carts.listLines(repo.carts.getActive(userId, 'store-pao-de-acucar')!.id).length
+      : 0,
+    purchaseCount: repo.purchases.list(userId).length,
+    userId,
   }
 }
 
-export { STORES, CATEGORIES, PRODUCT_TEMPLATES, barcodeFor, daysAgo }
+export { STORES, CATEGORIES, PRODUCT_TEMPLATES, barcodeFor }

@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { createDatabase, type Database } from './client'
 import { createRepository, type Repository } from './repositories'
-import { resetDatabase, seedDatabase } from './seed'
+import { DEMO_USER_ID, resetDatabase, seedDatabase, seedUserData } from './seed'
 
 let db: Database
 let repo: Repository
@@ -12,18 +12,20 @@ beforeEach(() => {
 })
 
 describe('seedDatabase', () => {
-  it('populates categories, stores and products', () => {
+  it('populates the global catalog', () => {
     const result = seedDatabase(db, { seed: 42 })
     expect(result.categoryCount).toBeGreaterThanOrEqual(5)
     expect(result.storeCount).toBeGreaterThanOrEqual(3)
     expect(result.productCount).toBeGreaterThanOrEqual(20)
     expect(repo.products.list().length).toBe(result.productCount)
+    expect(result.userId).toBe(DEMO_USER_ID)
   })
 
-  it('creates an active list with pending and scanned items', () => {
+  it('creates an active list with pending and scanned items for the demo user', () => {
     seedDatabase(db, { seed: 42 })
-    const list = repo.lists.getActive()
+    const list = repo.lists.getActive(DEMO_USER_ID)
     expect(list).not.toBeNull()
+    expect(list?.userId).toBe(DEMO_USER_ID)
     const items = repo.lists.listItems(list!.id)
     expect(items.some((i) => i.status === 'pending')).toBe(true)
     expect(items.some((i) => i.status === 'scanned')).toBe(true)
@@ -31,7 +33,7 @@ describe('seedDatabase', () => {
 
   it('creates an active cart with lines and a searchable catalogue', () => {
     seedDatabase(db, { seed: 42 })
-    const cart = repo.carts.getActive('store-pao-de-acucar')
+    const cart = repo.carts.getActive(DEMO_USER_ID, 'store-pao-de-acucar')
     expect(cart).not.toBeNull()
     expect(repo.carts.listLines(cart!.id).length).toBeGreaterThanOrEqual(4)
 
@@ -41,7 +43,7 @@ describe('seedDatabase', () => {
 
   it('creates historical purchases with items', () => {
     seedDatabase(db, { seed: 42 })
-    const purchases = repo.purchases.list()
+    const purchases = repo.purchases.list(DEMO_USER_ID)
     expect(purchases.length).toBeGreaterThanOrEqual(3)
     for (const purchase of purchases) {
       expect(repo.purchases.getItems(purchase.id).length).toBeGreaterThan(0)
@@ -69,14 +71,33 @@ describe('seedDatabase', () => {
     expect(repo.products.list().length).toBe(firstCount)
     expect(repo.products.list().length).not.toBe(firstCount * 2)
   })
+
+  it('isolates demo data between users', () => {
+    seedDatabase(db, { seed: 42 })
+    const otherUserId = 'user-other'
+    seedUserData(db, repo, otherUserId, { seed: 99 })
+
+    expect(repo.lists.getActive(otherUserId)?.userId).toBe(otherUserId)
+    expect(repo.lists.getActive(DEMO_USER_ID)?.userId).toBe(DEMO_USER_ID)
+    expect(repo.purchases.list(otherUserId).length).toBeGreaterThan(0)
+
+    const demoLines = repo.carts.listLines(
+      repo.carts.getActive(DEMO_USER_ID, 'store-pao-de-acucar')!.id,
+    )
+    const otherLines = repo.carts.listLines(
+      repo.carts.getActive(otherUserId, 'store-pao-de-acucar')!.id,
+    )
+    expect(demoLines.map((line) => line.id)).not.toEqual(otherLines.map((line) => line.id))
+  })
 })
 
 describe('resetDatabase', () => {
-  it('clears every table', () => {
+  it('clears every catalogue and personal table', () => {
     seedDatabase(db, { seed: 42 })
     resetDatabase(db)
     expect(repo.products.list()).toHaveLength(0)
-    expect(repo.purchases.list()).toHaveLength(0)
+    expect(repo.purchases.list(DEMO_USER_ID)).toHaveLength(0)
+    expect(repo.lists.getActive(DEMO_USER_ID)).toBeNull()
     expect(repo.stores.list()).toHaveLength(0)
   })
 })

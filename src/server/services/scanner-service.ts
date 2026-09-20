@@ -12,13 +12,14 @@ export interface BarcodeLookup {
 
 export function lookupBarcode(
   repo: Repository,
+  userId: string,
   barcode: string,
   storeId?: string,
 ): BarcodeLookup | null {
   const product = repo.products.findByBarcode(barcode)
   if (!product) return null
 
-  const last = repo.priceHistory.lastForProduct(product.id, storeId)
+  const last = repo.priceHistory.lastForProduct(userId, product.id, storeId)
   const previousPriceCents = last?.priceCents ?? product.priceCents
   const suggestedPriceCents = product.priceCents
 

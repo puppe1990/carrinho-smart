@@ -65,6 +65,7 @@ function toProduct(row: any): Product {
 function toShoppingList(row: any): ShoppingList {
   return {
     id: row.id,
+    userId: row.user_id,
     name: row.name,
     shoppingDate: row.shopping_date,
     budgetCents: row.budget_cents,
@@ -75,6 +76,7 @@ function toShoppingList(row: any): ShoppingList {
 function toCart(row: any): Cart {
   return {
     id: row.id,
+    userId: row.user_id,
     storeId: row.store_id,
     listId: row.list_id,
     budgetCents: row.budget_cents,
@@ -228,36 +230,48 @@ export function createRepository(db: Database) {
 
   const carts = {
     getOrCreateActive(input: {
+      userId: string
       storeId: string
       listId?: string | null
       budgetCents?: number
     }): Cart {
-      const existing = carts.getActive(input.storeId)
+      const existing = carts.getActive(input.userId, input.storeId)
       if (existing) return existing
       const id = uuid()
-      db.prepare('INSERT INTO carts (id, store_id, list_id, budget_cents) VALUES (?, ?, ?, ?)').run(
-        id,
-        input.storeId,
-        input.listId ?? null,
-        input.budgetCents ?? 0,
-      )
-      return carts.get(id)!
+      db.prepare(
+        'INSERT INTO carts (id, user_id, store_id, list_id, budget_cents) VALUES (?, ?, ?, ?, ?)',
+      ).run(id, input.userId, input.storeId, input.listId ?? null, input.budgetCents ?? 0)
+      return carts.get(id, input.userId)!
     },
-    getActive(storeId: string): Cart | null {
+    getActive(userId: string, storeId: string): Cart | null {
       const row = db
         .prepare(
-          "SELECT * FROM carts WHERE status = 'active' AND store_id = ? ORDER BY created_at DESC LIMIT 1",
+          "SELECT * FROM carts WHERE user_id = ? AND status = 'active' AND store_id = ? ORDER BY created_at DESC LIMIT 1",
         )
-        .get(storeId) as any
+        .get(userId, storeId) as any
       return row ? toCart(row) : null
     },
-    get(id: string): Cart | null {
-      const row = db.prepare('SELECT * FROM carts WHERE id = ?').get(id) as any
+    getLatestActive(userId: string): Cart | null {
+      const row = db
+        .prepare(
+          "SELECT * FROM carts WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+        )
+        .get(userId) as any
       return row ? toCart(row) : null
     },
-    updateBudget(id: string, budgetCents: number): Cart {
-      db.prepare('UPDATE carts SET budget_cents = ? WHERE id = ?').run(budgetCents, id)
-      return carts.get(id)!
+    get(id: string, userId?: string): Cart | null {
+      const row = userId
+        ? (db.prepare('SELECT * FROM carts WHERE id = ? AND user_id = ?').get(id, userId) as any)
+        : (db.prepare('SELECT * FROM carts WHERE id = ?').get(id) as any)
+      return row ? toCart(row) : null
+    },
+    updateBudget(id: string, userId: string, budgetCents: number): Cart {
+      db.prepare('UPDATE carts SET budget_cents = ? WHERE id = ? AND user_id = ?').run(
+        budgetCents,
+        id,
+        userId,
+      )
+      return carts.get(id, userId)!
     },
     listLines(cartId: string): CartLine[] {
       return (
@@ -326,10 +340,11 @@ export function createRepository(db: Database) {
 
         db.prepare(
           `INSERT INTO purchases
-            (id, store_id, list_id, budget_cents, total_cents, savings_cents, item_count, purchased_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, user_id, store_id, list_id, budget_cents, total_cents, savings_cents, item_count, purchased_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           purchaseId,
+          cart.userId,
           cart.storeId,
           cart.listId,
           cart.budgetCents,
@@ -359,11 +374,18 @@ export function createRepository(db: Database) {
         }
 
         const insertPrice = db.prepare(
-          'INSERT INTO price_history (id, product_id, store_id, price_cents, recorded_at) VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO price_history (id, user_id, product_id, store_id, price_cents, recorded_at) VALUES (?, ?, ?, ?, ?, ?)',
         )
         for (const line of lines) {
           if (line.productId) {
-            insertPrice.run(uuid(), line.productId, cart.storeId, line.unitPriceCents, purchasedAt)
+            insertPrice.run(
+              uuid(),
+              cart.userId,
+              line.productId,
+              cart.storeId,
+              line.unitPriceCents,
+              purchasedAt,
+            )
           }
           if (line.listItemId) {
             db.prepare(
@@ -389,26 +411,27 @@ export function createRepository(db: Database) {
   const lists = {
     create(input: {
       id?: string
+      userId: string
       name: string
       shoppingDate: string
       budgetCents?: number
     }): ShoppingList {
       const id = input.id ?? uuid()
       db.prepare(
-        'INSERT INTO shopping_lists (id, name, shopping_date, budget_cents) VALUES (?, ?, ?, ?)',
-      ).run(id, input.name, input.shoppingDate, input.budgetCents ?? 0)
+        'INSERT INTO shopping_lists (id, user_id, name, shopping_date, budget_cents) VALUES (?, ?, ?, ?, ?)',
+      ).run(id, input.userId, input.name, input.shoppingDate, input.budgetCents ?? 0)
       return lists.get(id)!
     },
     get(id: string): ShoppingList | null {
       const row = db.prepare('SELECT * FROM shopping_lists WHERE id = ?').get(id) as any
       return row ? toShoppingList(row) : null
     },
-    getActive(): ShoppingList | null {
+    getActive(userId: string): ShoppingList | null {
       const row = db
         .prepare(
-          "SELECT * FROM shopping_lists WHERE status = 'active' ORDER BY created_at DESC LIMIT 1",
+          "SELECT * FROM shopping_lists WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
         )
-        .get() as any
+        .get(userId) as any
       return row ? toShoppingList(row) : null
     },
     addItem(listId: string, input: NewListItem): ListItem {
@@ -475,10 +498,11 @@ export function createRepository(db: Database) {
       const run = db.transaction(() => {
         db.prepare(
           `INSERT INTO purchases
-            (id, store_id, list_id, budget_cents, total_cents, savings_cents, item_count, purchased_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, user_id, store_id, list_id, budget_cents, total_cents, savings_cents, item_count, purchased_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           id,
+          input.userId,
           input.storeId,
           input.listId ?? null,
           input.budgetCents,
@@ -509,36 +533,45 @@ export function createRepository(db: Database) {
       run()
       return purchases.get(id)!
     },
-    get(id: string): Purchase | null {
-      const row = db
-        .prepare(
-          `SELECT p.*, s.name AS store_name FROM purchases p
-           JOIN stores s ON s.id = p.store_id WHERE p.id = ?`,
-        )
-        .get(id) as any
+    get(id: string, userId?: string): Purchase | null {
+      const row = userId
+        ? (db
+            .prepare(
+              `SELECT p.*, s.name AS store_name FROM purchases p
+               JOIN stores s ON s.id = p.store_id WHERE p.id = ? AND p.user_id = ?`,
+            )
+            .get(id, userId) as any)
+        : (db
+            .prepare(
+              `SELECT p.*, s.name AS store_name FROM purchases p
+               JOIN stores s ON s.id = p.store_id WHERE p.id = ?`,
+            )
+            .get(id) as any)
       return row ? toPurchase(row) : null
     },
-    list(): Purchase[] {
+    list(userId: string): Purchase[] {
       return (
         db
           .prepare(
             `SELECT p.*, s.name AS store_name FROM purchases p
-             JOIN stores s ON s.id = p.store_id ORDER BY p.purchased_at DESC`,
+             JOIN stores s ON s.id = p.store_id
+             WHERE p.user_id = ?
+             ORDER BY p.purchased_at DESC`,
           )
-          .all() as any[]
+          .all(userId) as any[]
       ).map(toPurchase)
     },
-    listForMonth(year: number, month: number): Purchase[] {
+    listForMonth(userId: string, year: number, month: number): Purchase[] {
       const prefix = `${year}-${String(month).padStart(2, '0')}`
       return (
         db
           .prepare(
             `SELECT p.*, s.name AS store_name FROM purchases p
              JOIN stores s ON s.id = p.store_id
-             WHERE substr(p.purchased_at, 1, 7) = ?
+             WHERE p.user_id = ? AND substr(p.purchased_at, 1, 7) = ?
              ORDER BY p.purchased_at DESC`,
           )
-          .all(prefix) as any[]
+          .all(userId, prefix) as any[]
       ).map(toPurchase)
     },
     getItems(purchaseId: string): PurchaseItem[] {
@@ -552,40 +585,44 @@ export function createRepository(db: Database) {
 
   const priceHistory = {
     record(input: {
+      userId: string
       productId: string
       storeId?: string | null
       priceCents: number
       recordedAt?: string
     }): void {
       db.prepare(
-        'INSERT INTO price_history (id, product_id, store_id, price_cents, recorded_at) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO price_history (id, user_id, product_id, store_id, price_cents, recorded_at) VALUES (?, ?, ?, ?, ?, ?)',
       ).run(
         uuid(),
+        input.userId,
         input.productId,
         input.storeId ?? null,
         input.priceCents,
         input.recordedAt ?? new Date().toISOString(),
       )
     },
-    lastForProduct(productId: string, storeId?: string): PriceEntry | null {
+    lastForProduct(userId: string, productId: string, storeId?: string): PriceEntry | null {
       const row = storeId
         ? (db
             .prepare(
-              'SELECT * FROM price_history WHERE product_id = ? AND store_id = ? ORDER BY recorded_at DESC LIMIT 1',
+              'SELECT * FROM price_history WHERE user_id = ? AND product_id = ? AND store_id = ? ORDER BY recorded_at DESC LIMIT 1',
             )
-            .get(productId, storeId) as any)
+            .get(userId, productId, storeId) as any)
         : (db
             .prepare(
-              'SELECT * FROM price_history WHERE product_id = ? ORDER BY recorded_at DESC LIMIT 1',
+              'SELECT * FROM price_history WHERE user_id = ? AND product_id = ? ORDER BY recorded_at DESC LIMIT 1',
             )
-            .get(productId) as any)
+            .get(userId, productId) as any)
       return row ? toPriceEntry(row) : null
     },
-    historyForProduct(productId: string): PriceEntry[] {
+    historyForProduct(userId: string, productId: string): PriceEntry[] {
       return (
         db
-          .prepare('SELECT * FROM price_history WHERE product_id = ? ORDER BY recorded_at DESC')
-          .all(productId) as any[]
+          .prepare(
+            'SELECT * FROM price_history WHERE user_id = ? AND product_id = ? ORDER BY recorded_at DESC',
+          )
+          .all(userId, productId) as any[]
       ).map(toPriceEntry)
     },
   }

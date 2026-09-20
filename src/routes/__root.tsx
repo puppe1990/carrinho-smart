@@ -1,9 +1,29 @@
-import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Outlet, Scripts, createRootRoute, redirect } from '@tanstack/react-router'
 
 import appCss from '../styles.css?url'
+import { AuthContext } from '../auth/session-context'
 import { BottomNav } from '../components/BottomNav'
+import { fetchSession } from '../server/functions/session'
+
+const PUBLIC_PATHS = ['/login', '/signup']
 
 export const Route = createRootRoute({
+  beforeLoad: async ({ location }) => {
+    const isApi = location.pathname.startsWith('/api')
+    if (isApi) return { user: null }
+
+    const user = await fetchSession()
+    const isPublic = PUBLIC_PATHS.includes(location.pathname)
+
+    if (!user && !isPublic) {
+      throw redirect({ to: '/login' })
+    }
+    if (user && isPublic) {
+      throw redirect({ to: '/' })
+    }
+
+    return { user }
+  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -33,11 +53,15 @@ export const Route = createRootRoute({
 })
 
 function RootLayout() {
+  const { user } = Route.useRouteContext()
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-surface">
-      <Outlet />
-      <BottomNav />
-    </div>
+    <AuthContext.Provider value={user}>
+      <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-surface">
+        <Outlet />
+        <BottomNav />
+      </div>
+    </AuthContext.Provider>
   )
 }
 

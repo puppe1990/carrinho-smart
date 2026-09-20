@@ -1,26 +1,36 @@
-import { createDatabase, getDatabase, type Database } from './client'
+import { createAuth, migrateAuth, type Auth } from '../auth/auth'
+import { getDatabase, type Database } from './client'
 import { createRepository, type Repository } from './repositories'
-import { seedDatabase } from './seed'
+import { ensureUserData, seedCatalog } from './seed'
 
-let repository: Repository | null = null
-
-export function getRepo(): Repository {
-  if (!repository) {
-    const db = getDatabase()
-    repository = createRepository(db)
-    ensureSeeded(db, repository)
-  }
-  return repository
+export interface Runtime {
+  db: Database
+  repo: Repository
+  auth: Auth
 }
 
-function ensureSeeded(db: Database, repo: Repository): void {
+let runtimePromise: Promise<Runtime> | null = null
+
+export function getRuntime(): Promise<Runtime> {
+  if (!runtimePromise) runtimePromise = initRuntime()
+  return runtimePromise
+}
+
+async function initRuntime(): Promise<Runtime> {
+  const db = getDatabase()
+  const repo = createRepository(db)
+
   if (repo.stores.list().length === 0) {
-    seedDatabase(db, { seed: Number(process.env.SEED ?? 42) })
+    seedCatalog(repo, { seed: Number(process.env.SEED ?? 42) })
   }
-}
 
-export function getRepoForDatabase(db: Database): Repository {
-  return createRepository(db)
-}
+  const auth = createAuth(db, {
+    onUserCreated: (user) => {
+      ensureUserData(db, repo, user.id)
+    },
+  })
 
-export { createDatabase }
+  await migrateAuth(auth)
+
+  return { db, repo, auth }
+}
