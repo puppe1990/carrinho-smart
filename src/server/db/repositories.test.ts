@@ -82,6 +82,34 @@ describe('schema', () => {
     migrate(db)
     expect(repo.products.get('prod-1')?.barcode).toBe('7896089011982')
   })
+
+  it('removes synthetic catalog products but keeps edited ones', () => {
+    repo.products.insert({
+      id: 'prod-14',
+      barcode: '7891000000144',
+      name: 'Banana',
+      categoryId: 'mercearia',
+    })
+    repo.products.insert({
+      id: 'prod-15',
+      barcode: '7891234567895',
+      name: 'Editado',
+      categoryId: 'mercearia',
+    })
+    repo.lists.create({ userId: USER, name: 'Semana', shoppingDate: '2026-09-01' })
+    const list = repo.lists.getActive(USER)!
+    const item = repo.lists.addItem(list.id, {
+      productId: 'prod-14',
+      name: 'Banana',
+      categoryId: 'mercearia',
+    })
+
+    migrate(db)
+
+    expect(repo.products.get('prod-14')).toBeNull()
+    expect(repo.products.get('prod-15')).not.toBeNull()
+    expect(repo.lists.getItem(item.id)?.productId).toBeNull()
+  })
 })
 
 describe('product repository', () => {

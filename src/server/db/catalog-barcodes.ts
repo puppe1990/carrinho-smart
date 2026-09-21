@@ -26,3 +26,19 @@ export const CATALOG_REAL_PRODUCTS: Record<string, RealCatalogProduct> = {
   'prod-23': { barcode: '7898969564298', brand: 'Absoluto' },
   'prod-28': { barcode: '7896066301778', brand: 'Wickbold' },
 }
+
+/** Produtos do catálogo antigo sem EAN-13 real (removidos do seed e do banco). */
+export const CATALOG_SYNTHETIC_PRODUCT_IDS = [
+  'prod-14',
+  'prod-15',
+  'prod-16',
+  'prod-17',
+  'prod-18',
+  'prod-19',
+  'prod-21',
+  'prod-24',
+  'prod-25',
+  'prod-26',
+  'prod-27',
+  'prod-29',
+]
