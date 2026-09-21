@@ -1,4 +1,8 @@
-import { CATALOG_REAL_PRODUCTS, CATALOG_SYNTHETIC_PRODUCT_IDS } from './catalog-barcodes'
+import {
+  CATALOG_EXTRA_PRODUCTS,
+  CATALOG_REAL_PRODUCTS,
+  CATALOG_SYNTHETIC_PRODUCT_IDS,
+} from './catalog-barcodes'
 
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -233,10 +237,41 @@ function removeSyntheticCatalogProducts(db: MigratableDatabase): void {
   }
 }
 
+/**
+ * Insere produtos extras do catálogo (com EAN real) quando ainda não existem.
+ * Só roda se a categoria já estiver cadastrada, para não violar a FK no boot inicial.
+ */
+function insertMissingCatalogProducts(db: MigratableDatabase): void {
+  for (const product of CATALOG_EXTRA_PRODUCTS) {
+    const exists = db.prepare('SELECT id FROM products WHERE id = ?').all(product.id)
+    if (exists.length > 0) continue
+    const category = db.prepare('SELECT id FROM categories WHERE id = ?').all(product.categoryId)
+    if (category.length === 0) continue
+    const barcodeTaken = db
+      .prepare('SELECT id FROM products WHERE barcode = ?')
+      .all(product.barcode)
+    if (barcodeTaken.length > 0) continue
+    db.prepare(
+      `INSERT INTO products (id, barcode, name, brand, category_id, unit, price_cents, image_url, aisle)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+    ).run(
+      product.id,
+      product.barcode,
+      product.name,
+      product.brand,
+      product.categoryId,
+      product.unit,
+      product.priceCents,
+      product.aisle,
+    )
+  }
+}
+
 export function migrate(db: MigratableDatabase): void {
   db.exec(SCHEMA_SQL)
   ensureColumns(db)
   fixLegacyBarcodes(db)
   upgradeCatalogBarcodes(db)
   removeSyntheticCatalogProducts(db)
+  insertMissingCatalogProducts(db)
 }

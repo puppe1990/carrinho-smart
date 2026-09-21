@@ -110,6 +110,16 @@ describe('schema', () => {
     expect(repo.products.get('prod-15')).not.toBeNull()
     expect(repo.lists.getItem(item.id)?.productId).toBeNull()
   })
+
+  it('insere produtos extras do catálogo quando a categoria existe', () => {
+    migrate(db)
+    const coca = repo.products.findByBarcode('7894900701517')
+    expect(coca?.name).toBe('Coca-Cola Zero 2L')
+    expect(coca?.unit).toBe('un')
+
+    migrate(db)
+    expect(repo.products.adminList({ search: 'coca-cola zero' })).toHaveLength(1)
+  })
 })
 
 describe('product repository', () => {

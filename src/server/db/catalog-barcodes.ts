@@ -42,3 +42,28 @@ export const CATALOG_SYNTHETIC_PRODUCT_IDS = [
   'prod-27',
   'prod-29',
 ]
+
+export interface CatalogExtraProduct {
+  id: string
+  barcode: string
+  name: string
+  brand: string
+  categoryId: string
+  unit: 'un' | 'kg' | 'L'
+  priceCents: number
+  aisle: string
+}
+
+/** Produtos extras (EAN real) adicionados depois do catálogo base. */
+export const CATALOG_EXTRA_PRODUCTS: CatalogExtraProduct[] = [
+  {
+    id: 'prod-coca-zero-2l',
+    barcode: '7894900701517',
+    name: 'Coca-Cola Zero 2L',
+    brand: 'Coca-Cola',
+    categoryId: 'mercearia',
+    unit: 'un',
+    priceCents: 1090,
+    aisle: 'Corredor 3 (Mercearia)',
+  },
+]
