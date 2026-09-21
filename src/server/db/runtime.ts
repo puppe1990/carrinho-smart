@@ -1,5 +1,6 @@
 import { createAuth, migrateAuth, type Auth } from '../auth/auth'
 import { getDatabase, type Database } from './client'
+import { importReceipts } from './receipt-imports'
 import { createRepository, type Repository } from './repositories'
 import { seedCatalog } from './seed'
 
@@ -28,6 +29,8 @@ async function initRuntime(): Promise<Runtime> {
   const auth = createAuth(db)
 
   await migrateAuth(auth)
+
+  importReceipts(repo, db)
 
   return { db, repo, auth }
 }

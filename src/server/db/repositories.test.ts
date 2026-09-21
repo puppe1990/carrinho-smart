@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { createDatabase, type Database } from './client'
+import { importReceipts } from './receipt-imports'
 import { createRepository, type Repository } from './repositories'
 import { migrate } from './schema'
 
@@ -119,6 +120,30 @@ describe('schema', () => {
 
     migrate(db)
     expect(repo.products.adminList({ search: 'coca-cola zero' })).toHaveLength(1)
+  })
+})
+
+describe('receipt imports', () => {
+  it('importa a compra para o usuário do e-mail informado, uma única vez', () => {
+    db.prepare('INSERT INTO "user" (id, name, email) VALUES (?, ?, ?)').run(
+      'u-mat',
+      'Matheus',
+      'matheus.puppe@gmail.com',
+    )
+    importReceipts(repo, db)
+
+    const purchase = repo.purchases.get('purchase-atacadao-29131', 'u-mat')
+    expect(purchase?.totalCents).toBe(20462)
+    expect(purchase?.storeName).toBe('Atacadão Tatuapé')
+    expect(repo.purchases.getItems('purchase-atacadao-29131')).toHaveLength(17)
+
+    importReceipts(repo, db)
+    expect(repo.purchases.list('u-mat')).toHaveLength(1)
+  })
+
+  it('não importa quando o usuário não existe', () => {
+    importReceipts(repo, db)
+    expect(repo.purchases.get('purchase-atacadao-29131')).toBeNull()
   })
 })
 
