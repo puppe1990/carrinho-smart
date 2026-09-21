@@ -14,8 +14,10 @@ export interface UseBarcodeCameraResult {
   videoRef: React.RefObject<HTMLVideoElement | null>
   status: CameraStatus
   error: string | null
-  /** true quando o navegador não expõe a API de decodificação nativa. */
+  /** true quando nenhum decodificador (nativo ou fallback) está disponível. */
   autoDetectUnsupported: boolean
+  /** true quando a leitura usa o decoder JS (ZXing) em vez da API nativa. */
+  usingFallback: boolean
   /** Formatos suportados pela BarcodeDetector nativa (quando disponível). */
   supportedFormats: string[]
   start: () => Promise<void>
@@ -33,6 +35,10 @@ interface BarcodeDetectorLike {
 
 type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDetectorLike
 
+interface ScannerControlsLike {
+  stop: () => void
+}
+
 const PREFERRED_FORMATS = [
   'ean_13',
   'ean_8',
@@ -43,6 +49,8 @@ const PREFERRED_FORMATS = [
   'itf',
   'qr_code',
 ]
+
+const FALLBACK_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf']
 
 function getDetectorCtor(): BarcodeDetectorCtor | null {
   if (typeof window === 'undefined') return null
@@ -58,6 +66,7 @@ export function useBarcodeCamera({
   const streamRef = useRef<MediaStream | null>(null)
   const rafRef = useRef<number | null>(null)
   const detectorRef = useRef<BarcodeDetectorLike | null>(null)
+  const zxingControlsRef = useRef<ScannerControlsLike | null>(null)
   const lastHitRef = useRef<{ code: string; at: number }>({ code: '', at: 0 })
   const onDetectRef = useRef(onDetect)
   onDetectRef.current = onDetect
@@ -66,12 +75,30 @@ export function useBarcodeCamera({
   const [error, setError] = useState<string | null>(null)
   const [supportedFormats, setSupportedFormats] = useState<string[]>([])
   const [autoDetectUnsupported, setAutoDetectUnsupported] = useState(false)
+  const [usingFallback, setUsingFallback] = useState(false)
+
+  const emitCode = useCallback(
+    (raw: string | undefined) => {
+      if (!raw) return
+      const normalized = normalizeBarcode(raw)
+      if (!normalized) return
+      const now = Date.now()
+      const isDuplicate =
+        normalized === lastHitRef.current.code && now - lastHitRef.current.at < cooldownMs
+      if (isDuplicate) return
+      lastHitRef.current = { code: normalized, at: now }
+      onDetectRef.current(normalized)
+    },
+    [cooldownMs],
+  )
 
   const stop = useCallback(() => {
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current)
       rafRef.current = null
     }
+    zxingControlsRef.current?.stop()
+    zxingControlsRef.current = null
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
     if (videoRef.current) videoRef.current.srcObject = null
@@ -97,23 +124,14 @@ export function useBarcodeCamera({
       try {
         const codes = await activeDetector.detect(video)
         const hit = codes.find((code) => code.rawValue)
-        if (hit?.rawValue) {
-          const normalized = normalizeBarcode(hit.rawValue)
-          const now = Date.now()
-          const isDuplicate =
-            normalized === lastHitRef.current.code && now - lastHitRef.current.at < cooldownMs
-          if (normalized && !isDuplicate) {
-            lastHitRef.current = { code: normalized, at: now }
-            onDetectRef.current(normalized)
-          }
-        }
+        emitCode(hit?.rawValue)
       } catch {
         // frames ocasionais falham (foco/exposição) — segue o loop
       }
     }
 
     rafRef.current = requestAnimationFrame(() => void scanLoop())
-  }, [cooldownMs])
+  }, [emitCode])
 
   const start = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
@@ -136,6 +154,7 @@ export function useBarcodeCamera({
 
       video.srcObject = stream
       video.setAttribute('playsinline', 'true')
+      video.setAttribute('webkit-playsinline', 'true')
       await video.play().catch(() => undefined)
 
       const Detector = getDetectorCtor()
@@ -147,25 +166,39 @@ export function useBarcodeCamera({
             })
           : new Detector()
         setSupportedFormats(formats)
-      } else {
-        detectorRef.current = null
-        setSupportedFormats([])
-        setAutoDetectUnsupported(true)
+        setAutoDetectUnsupported(false)
+        setUsingFallback(false)
+        setStatus('running')
+        rafRef.current = requestAnimationFrame(() => void scanLoop())
+        return
       }
 
+      const started = await startZxingFallback(video, emitCode, zxingControlsRef)
+      detectorRef.current = null
+      setSupportedFormats(started ? FALLBACK_FORMATS : [])
+      setAutoDetectUnsupported(!started)
+      setUsingFallback(started)
       setStatus('running')
-      rafRef.current = requestAnimationFrame(() => void scanLoop())
     } catch (cause) {
       const message = describeCameraError(cause)
       setError(message)
       setStatus('error')
       stop()
     }
-  }, [scanLoop, stop])
+  }, [emitCode, scanLoop, stop])
 
   useEffect(() => stop, [stop])
 
-  return { videoRef, status, error, autoDetectUnsupported, supportedFormats, start, stop }
+  return {
+    videoRef,
+    status,
+    error,
+    autoDetectUnsupported,
+    usingFallback,
+    supportedFormats,
+    start,
+    stop,
+  }
 }
 
 async function getSupportedFormats(Detector: BarcodeDetectorCtor): Promise<string[]> {
@@ -182,6 +215,45 @@ async function getSupportedFormats(Detector: BarcodeDetectorCtor): Promise<strin
     // segue sem a lista explícita
   }
   return []
+}
+
+/**
+ * Decoder em JS (ZXing) para navegadores sem a Barcode Detection API (ex.: Safari/iOS).
+ * Importado sob demanda para não pesar o bundle principal.
+ */
+async function startZxingFallback(
+  video: HTMLVideoElement,
+  emitCode: (raw: string | undefined) => void,
+  controlsRef: { current: ScannerControlsLike | null },
+): Promise<boolean> {
+  try {
+    const [{ BrowserMultiFormatReader }, zxing] = await Promise.all([
+      import('@zxing/browser'),
+      import('@zxing/library'),
+    ])
+    const hints = new Map<number, unknown>()
+    hints.set(zxing.DecodeHintType.POSSIBLE_FORMATS, [
+      zxing.BarcodeFormat.EAN_13,
+      zxing.BarcodeFormat.EAN_8,
+      zxing.BarcodeFormat.UPC_A,
+      zxing.BarcodeFormat.UPC_E,
+      zxing.BarcodeFormat.CODE_128,
+      zxing.BarcodeFormat.CODE_39,
+      zxing.BarcodeFormat.ITF,
+    ])
+    hints.set(zxing.DecodeHintType.TRY_HARDER, true)
+
+    const reader = new BrowserMultiFormatReader(hints as Map<never, never>, {
+      delayBetweenScanAttempts: 150,
+    })
+    const controls = await reader.decodeFromVideoElement(video, (result) => {
+      if (result) emitCode(result.getText())
+    })
+    controlsRef.current = controls
+    return true
+  } catch {
+    return false
+  }
 }
 
 function describeCameraError(cause: unknown): string {
