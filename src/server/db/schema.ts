@@ -1,3 +1,5 @@
+import { CATALOG_REAL_PRODUCTS } from './catalog-barcodes'
+
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
@@ -137,7 +139,8 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 `
 
 export interface MigratableStatement {
-  all(): Array<Record<string, unknown>>
+  all(...params: unknown[]): Array<Record<string, unknown>>
+  run(...params: unknown[]): unknown
 }
 
 export interface MigratableDatabase {
@@ -194,8 +197,28 @@ function fixLegacyBarcodes(db: MigratableDatabase): void {
   }
 }
 
+/**
+ * Substitui os códigos sintéticos do catálogo pelos EAN-13 reais conhecidos,
+ * mantendo a operação idempotente e sem sobrescrever códigos já usados.
+ */
+function upgradeCatalogBarcodes(db: MigratableDatabase): void {
+  for (const [id, product] of Object.entries(CATALOG_REAL_PRODUCTS)) {
+    const current = db.prepare('SELECT barcode FROM products WHERE id = ?').all(id)
+    if (current.length === 0) continue
+    if (String(current[0].barcode) === product.barcode) continue
+    const taken = db.prepare('SELECT id FROM products WHERE barcode = ?').all(product.barcode)
+    if (taken.length > 0) continue
+    db.prepare('UPDATE products SET barcode = ?, brand = ? WHERE id = ?').run(
+      product.barcode,
+      product.brand,
+      id,
+    )
+  }
+}
+
 export function migrate(db: MigratableDatabase): void {
   db.exec(SCHEMA_SQL)
   ensureColumns(db)
   fixLegacyBarcodes(db)
+  upgradeCatalogBarcodes(db)
 }
