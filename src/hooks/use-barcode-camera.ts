@@ -52,6 +52,9 @@ const PREFERRED_FORMATS = [
 
 const FALLBACK_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf']
 
+/** Leituras idênticas consecutivas exigidas antes de aceitar um código (evita misreads). */
+const CONFIRMATIONS = 2
+
 function getDetectorCtor(): BarcodeDetectorCtor | null {
   if (typeof window === 'undefined') return null
   const ctor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector
@@ -68,6 +71,7 @@ export function useBarcodeCamera({
   const detectorRef = useRef<BarcodeDetectorLike | null>(null)
   const zxingControlsRef = useRef<ScannerControlsLike | null>(null)
   const lastHitRef = useRef<{ code: string; at: number }>({ code: '', at: 0 })
+  const pendingRef = useRef<{ code: string; count: number }>({ code: '', count: 0 })
   const onDetectRef = useRef(onDetect)
   onDetectRef.current = onDetect
 
@@ -83,10 +87,18 @@ export function useBarcodeCamera({
       const normalized = normalizeBarcode(raw)
       if (!normalized) return
       const now = Date.now()
-      const isDuplicate =
-        normalized === lastHitRef.current.code && now - lastHitRef.current.at < cooldownMs
-      if (isDuplicate) return
+      const last = lastHitRef.current
+      if (normalized === last.code && now - last.at < cooldownMs) return
+
+      const pending = pendingRef.current
+      pendingRef.current =
+        pending.code === normalized
+          ? { code: normalized, count: pending.count + 1 }
+          : { code: normalized, count: 1 }
+      if (pendingRef.current.count < CONFIRMATIONS) return
+
       lastHitRef.current = { code: normalized, at: now }
+      pendingRef.current = { code: '', count: 0 }
       onDetectRef.current(normalized)
     },
     [cooldownMs],
@@ -145,10 +157,15 @@ export function useBarcodeCamera({
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
         audio: false,
       })
       streamRef.current = stream
+      await applyContinuousFocus(stream)
       const video = videoRef.current
       if (!video) throw new Error('Elemento de vídeo indisponível')
 
@@ -215,6 +232,21 @@ async function getSupportedFormats(Detector: BarcodeDetectorCtor): Promise<strin
     // segue sem a lista explícita
   }
   return []
+}
+
+/** Pede foco contínuo quando o dispositivo suporta (melhora muito a leitura de 1D). */
+async function applyContinuousFocus(stream: MediaStream): Promise<void> {
+  try {
+    const track = stream.getVideoTracks()[0]
+    const capabilities = track?.getCapabilities?.() as { focusMode?: string[] } | undefined
+    if (capabilities?.focusMode?.includes('continuous')) {
+      await track.applyConstraints({
+        advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet],
+      })
+    }
+  } catch {
+    // segue sem foco contínuo
+  }
 }
 
 /**

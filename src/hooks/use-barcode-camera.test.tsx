@@ -55,6 +55,7 @@ describe('useBarcodeCamera fallback', () => {
         callback: (result: unknown, error: unknown, controls: unknown) => void,
       ) => {
         callback({ getText: () => '7896089011982' }, undefined, { stop: vi.fn() })
+        callback({ getText: () => '7896089011982' }, undefined, { stop: vi.fn() })
         return { stop: vi.fn() }
       },
     )
@@ -67,7 +68,29 @@ describe('useBarcodeCamera fallback', () => {
     expect(decodeFromVideoElement).toHaveBeenCalledTimes(1)
     expect(latest.usingFallback).toBe(true)
     expect(latest.autoDetectUnsupported).toBe(false)
+    expect(onDetect).toHaveBeenCalledTimes(1)
     expect(onDetect).toHaveBeenCalledWith('7896089011982')
+  })
+
+  it('descarta leituras isoladas que não se confirmam', async () => {
+    const onDetect = vi.fn()
+    decodeFromVideoElement.mockImplementation(
+      async (
+        _video: unknown,
+        callback: (result: unknown, error: unknown, controls: unknown) => void,
+      ) => {
+        callback({ getText: () => '6415181089791' }, undefined, { stop: vi.fn() })
+        callback({ getText: () => '884808711517' }, undefined, { stop: vi.fn() })
+        return { stop: vi.fn() }
+      },
+    )
+
+    render(createElement(Harness, { onDetect }))
+    await act(async () => {
+      await latest.start()
+    })
+
+    expect(onDetect).not.toHaveBeenCalled()
   })
 
   it('marca como sem suporte quando o fallback também falha', async () => {
