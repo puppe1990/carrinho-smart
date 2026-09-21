@@ -40,6 +40,28 @@ export function monthLabel(year: number, month: number): string {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
+export interface MonthBudget {
+  budgetCents: number
+  spentCents: number
+  label: string
+}
+
+/** Meta do mês corrente e total já gasto (soma das compras do mês). */
+export function getCurrentMonthBudget(
+  repo: Repository,
+  userId: string,
+  now = new Date(),
+): MonthBudget {
+  const year = now.getFullYear()
+  const month = now.getMonth() + 1
+  const purchases = repo.purchases.listForMonth(userId, year, month)
+  return {
+    budgetCents: repo.preferences.get(userId).monthlyBudgetCents,
+    spentCents: purchases.reduce((sum, purchase) => sum + purchase.totalCents, 0),
+    label: monthLabel(year, month),
+  }
+}
+
 export function listAvailableMonths(repo: Repository, userId: string): MonthRef[] {
   const seen = new Map<string, MonthRef>()
   for (const purchase of repo.purchases.list(userId)) {

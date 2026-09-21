@@ -1,11 +1,17 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSession } from '../auth/session'
 import {
+  getCurrentMonthBudget,
   getHistory,
   getMonthSummary,
   getPurchaseSummary,
   listAvailableMonths,
 } from '../services/history-service'
+
+export const fetchMonthBudget = createServerFn({ method: 'GET' }).handler(async () => {
+  const { repo, user } = await requireSession()
+  return getCurrentMonthBudget(repo, user.id)
+})
 
 export const fetchMonths = createServerFn({ method: 'GET' }).handler(async () => {
   const { repo, user } = await requireSession()

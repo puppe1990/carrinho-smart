@@ -9,22 +9,29 @@ import {
   ScreenHeader,
   Sheet,
 } from '../components/ui'
-import { formatBRL, formatPercent, formatQuantity } from '../domain/money'
+import { budgetGauge } from '../domain/budget'
+import { formatBRL, formatPercent, formatQuantity, parseBRL } from '../domain/money'
 import { fetchCartOverview } from '../server/functions/cart'
 import {
-  changeBudget,
   changeCartItemQuantity,
   deleteCartItem,
   emptyCart,
   finishCart,
 } from '../server/functions/cart'
+import { changeMonthlyBudget, fetchMonthBudget } from '../server/functions/history'
 
 export const Route = createFileRoute('/')({
   validateSearch: (search: Record<string, unknown>): { store?: string } => ({
     store: typeof search.store === 'string' ? search.store : undefined,
   }),
   loaderDeps: ({ search }) => ({ store: search.store }),
-  loader: ({ deps }) => fetchCartOverview({ data: { storeId: deps.store } }),
+  loader: async ({ deps }) => {
+    const [cart, monthBudget] = await Promise.all([
+      fetchCartOverview({ data: { storeId: deps.store } }),
+      fetchMonthBudget(),
+    ])
+    return { ...cart, monthBudget }
+  },
   component: CartPage,
 })
 
@@ -35,11 +42,16 @@ function CartPage() {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
   const [sheet, setSheet] = useState<'store' | 'budget' | null>(null)
-  const [budgetDraft, setBudgetDraft] = useState(String(data.budget.limitCents / 100))
+  const [budgetDraft, setBudgetDraft] = useState('')
   const [busyLine, setBusyLine] = useState<string | null>(null)
   const [checkingOut, setCheckingOut] = useState(false)
 
-  const { summary, budget, tip } = data
+  const { summary, monthBudget, tip } = data
+
+  const gauge = budgetGauge(monthBudget.spentCents, summary.totalCents, monthBudget.budgetCents)
+  const hasMeta = monthBudget.budgetCents > 0
+  const projectedCents = monthBudget.spentCents + summary.totalCents
+  const remainingCents = Math.max(0, monthBudget.budgetCents - projectedCents)
 
   const countsByCategory = useMemo(() => {
     const counts = new Map<string, number>()
@@ -75,7 +87,7 @@ function CartPage() {
   }
 
   const gaugeTone =
-    budget.level === 'over' ? 'error' : budget.level === 'warning' ? 'secondary' : 'primary'
+    gauge.level === 'over' ? 'error' : gauge.level === 'warning' ? 'secondary' : 'primary'
 
   return (
     <div className="flex min-h-screen flex-col pb-64">
@@ -94,19 +106,21 @@ function CartPage() {
             <button
               type="button"
               onClick={() => {
-                setBudgetDraft(String(budget.limitCents / 100))
+                setBudgetDraft(
+                  hasMeta ? (monthBudget.budgetCents / 100).toFixed(2).replace('.', ',') : '',
+                )
                 setSheet('budget')
               }}
               className="flex items-center gap-1 rounded-full bg-surface-container px-2 py-1 text-[11px] font-semibold text-on-surface"
             >
               <Icon name="tune" className="text-[14px]" />
-              Ajustar limite
+              Ajustar meta
             </button>
           </div>
 
           <div className="relative z-10 flex items-baseline justify-between gap-2">
             <div>
-              <span className="block text-xs text-on-surface-variant">Total no carrinho</span>
+              <span className="block text-xs text-on-surface-variant">No carrinho</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-base font-bold text-primary">R$</span>
                 <span className="tnum text-3xl font-extrabold tracking-tight text-on-surface">
@@ -115,31 +129,46 @@ function CartPage() {
               </div>
             </div>
             <div className="text-right">
-              <span className="block text-[11px] text-on-surface-variant">Meta estipulada</span>
+              <span className="block text-[11px] text-on-surface-variant">Meta do mês</span>
               <span className="tnum text-sm font-semibold text-on-surface">
-                {formatBRL(budget.limitCents)}
+                {hasMeta ? formatBRL(monthBudget.budgetCents) : 'Definir meta'}
               </span>
             </div>
           </div>
 
           <div className="relative z-10 mt-3 space-y-1.5">
-            <ProgressBar percent={budget.percent} tone={gaugeTone} className="h-3" />
+            <ProgressBar percent={gauge.totalPercent} tone={gaugeTone} className="h-3" />
             <div className="flex items-center justify-between text-[11px]">
               <span
                 className={`flex items-center gap-1 font-semibold ${
-                  budget.level === 'over' ? 'text-error' : 'text-primary'
+                  gauge.over ? 'text-error' : 'text-primary'
                 }`}
               >
-                <Icon name={budget.isOver ? 'error' : 'check_circle'} className="text-[14px]" />
-                {formatPercent(budget.percent)} do teto planejado
+                <Icon name={gauge.over ? 'error' : 'check_circle'} className="text-[14px]" />
+                {hasMeta
+                  ? `${formatPercent(gauge.totalPercent)} da meta do mês`
+                  : 'Sem meta definida'}
               </span>
               <span className="text-on-surface-variant">
-                Restam{' '}
-                <strong className="font-bold text-on-surface">
-                  {formatBRL(budget.remainingCents)}
-                </strong>
+                {hasMeta ? (
+                  <>
+                    Restam{' '}
+                    <strong className="font-bold text-on-surface">
+                      {formatBRL(remainingCents)}
+                    </strong>
+                  </>
+                ) : (
+                  'Toque em "Ajustar meta"'
+                )}
               </span>
             </div>
+            <p className="text-[11px] text-on-surface-variant">
+              Já gasto em {monthBudget.label}:{' '}
+              <strong className="font-bold text-on-surface">
+                {formatBRL(monthBudget.spentCents)}
+              </strong>{' '}
+              + carrinho {formatBRL(summary.totalCents)}
+            </p>
           </div>
 
           <div className="relative z-10 mt-3 flex items-center justify-between rounded-lg bg-surface-container-low p-2.5">
@@ -454,26 +483,27 @@ function CartPage() {
         </div>
       </Sheet>
 
-      <Sheet open={sheet === 'budget'} onClose={() => setSheet(null)} title="Ajustar meta de gasto">
+      <Sheet open={sheet === 'budget'} onClose={() => setSheet(null)} title="Meta do mês">
+        <p className="mb-3 text-xs text-on-surface-variant">
+          O orçamento mensal. Todas as compras do mês contam contra esta meta.
+        </p>
         <label className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
-          Teto do orçamento (R$)
+          Meta mensal (R$)
         </label>
         <input
-          type="number"
-          step="0.01"
+          autoFocus
+          inputMode="decimal"
           value={budgetDraft}
           onChange={(event) => setBudgetDraft(event.target.value)}
+          placeholder="0,00"
           className="mt-2 w-full rounded-xl bg-surface-container-low p-3 text-2xl font-extrabold text-on-surface outline-none focus:ring-2 focus:ring-primary/40"
         />
         <button
           type="button"
           onClick={async () => {
-            const cents = Math.round(Number(budgetDraft.replace(',', '.')) * 100)
-            if (Number.isFinite(cents) && cents > 0) {
-              await mutate(() =>
-                changeBudget({ data: { cartId: data.cart.id, budgetCents: cents } }),
-              )
-            }
+            await mutate(() =>
+              changeMonthlyBudget({ data: { budgetCents: parseBRL(budgetDraft) } }),
+            )
             setSheet(null)
           }}
           className="mt-4 h-12 w-full rounded-full bg-primary-container text-sm font-bold text-on-primary"

@@ -7,12 +7,16 @@ import { classifyBarcode, isValidEan13, normalizeBarcode } from '../domain/barco
 import { formatBRL, formatPercent, parseBRL } from '../domain/money'
 import { useBarcodeCamera } from '../hooks/use-barcode-camera'
 import { fetchCartOverview } from '../server/functions/cart'
+import { fetchMonthBudget } from '../server/functions/history'
 import { lookupProduct, scanProduct } from '../server/functions/scanner'
 
 export const Route = createFileRoute('/scanner')({
   loader: async () => {
-    const overview = await fetchCartOverview({ data: {} })
-    return { overview }
+    const [overview, monthBudget] = await Promise.all([
+      fetchCartOverview({ data: {} }),
+      fetchMonthBudget(),
+    ])
+    return { overview, monthBudget }
   },
   component: ScannerPage,
 })
@@ -20,7 +24,7 @@ export const Route = createFileRoute('/scanner')({
 type LookupResult = Awaited<ReturnType<typeof lookupProduct>>
 
 function ScannerPage() {
-  const { overview } = Route.useLoaderData()
+  const { overview, monthBudget } = Route.useLoaderData()
   const router = useRouter()
 
   const [torchOn, setTorchOn] = useState(false)
@@ -42,7 +46,11 @@ function ScannerPage() {
   const product = lookup?.product ?? null
   const unitPriceCents = promo ? Math.round(parseBRL(price) * 0.9) : parseBRL(price)
   const subtotalCents = Math.round(unitPriceCents * quantity)
-  const gauge = budgetGauge(overview.summary.totalCents, subtotalCents, overview.budget.limitCents)
+  const gauge = budgetGauge(
+    monthBudget.spentCents + overview.summary.totalCents,
+    subtotalCents,
+    monthBudget.budgetCents,
+  )
 
   const handleDetect = async (code: string) => {
     if (inFlightRef.current) return
@@ -422,7 +430,8 @@ function ScannerPage() {
           <div className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1 text-on-surface-variant">
               <Icon name="account_balance_wallet" className="text-[16px] text-primary" />
-              Meta de gasto ({formatBRL(overview.budget.limitCents)})
+              Meta do mês (
+              {monthBudget.budgetCents > 0 ? formatBRL(monthBudget.budgetCents) : 'definir'})
             </span>
             <span className={`font-bold ${gauge.over ? 'text-error' : 'text-secondary'}`}>
               {formatPercent(gauge.totalPercent)}
@@ -434,9 +443,13 @@ function ScannerPage() {
             over={gauge.over}
           />
           <div className="flex items-center justify-between pt-1 text-[11px] text-on-surface-variant">
-            <span>Anterior: {formatBRL(overview.summary.totalCents)}</span>
+            <span>
+              Mês {formatBRL(monthBudget.spentCents)} + carrinho{' '}
+              {formatBRL(overview.summary.totalCents)}
+            </span>
             <span className="font-semibold text-on-surface">
-              Novo total: {formatBRL(overview.summary.totalCents + subtotalCents)}
+              Novo total:{' '}
+              {formatBRL(monthBudget.spentCents + overview.summary.totalCents + subtotalCents)}
             </span>
           </div>
         </div>

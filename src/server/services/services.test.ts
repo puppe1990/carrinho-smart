@@ -14,6 +14,7 @@ import {
 import { lookupBarcode, searchProducts } from './scanner-service'
 import { addQuickItem, getShoppingListOverview, scanListItem } from './list-service'
 import {
+  getCurrentMonthBudget,
   getHistory,
   getMonthSummary,
   getPurchaseSummary,
@@ -196,6 +197,14 @@ describe('history service', () => {
     expect(history.overview.count).toBe(history.purchases.length)
     expect(history.overview.totalCents).toBeGreaterThan(0)
     expect(listAvailableMonths(repo, OTHER_USER)).toHaveLength(0)
+  })
+
+  it('returns the current month budget and spending', () => {
+    repo.preferences.update(USER, { monthlyBudgetCents: 50000 })
+    const budget = getCurrentMonthBudget(repo, USER, new Date('2026-09-15T12:00:00.000Z'))
+    expect(budget.budgetCents).toBe(50000)
+    expect(budget.spentCents).toBeGreaterThanOrEqual(0)
+    expect(budget.label).toContain('2026')
   })
 
   it('uses the monthly budget for the overview when set', () => {
