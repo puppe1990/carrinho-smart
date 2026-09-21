@@ -11,6 +11,7 @@ import {
 import appCss from '../styles.css?url'
 import { AuthContext } from '../auth/session-context'
 import { BottomNav } from '../components/BottomNav'
+import { RouteLoadingIndicator, RouteTransition } from '../components/route-transition'
 import { fetchSession } from '../server/functions/session'
 import { fetchOnboarding } from '../server/functions/onboarding'
 
@@ -126,11 +127,14 @@ function RootLayout() {
 
   return (
     <AuthContext.Provider value={user}>
+      <RouteLoadingIndicator />
       {isAdmin ? (
         <Outlet />
       ) : (
         <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-surface">
-          <Outlet />
+          <RouteTransition>
+            <Outlet />
+          </RouteTransition>
           <BottomNav />
         </div>
       )}

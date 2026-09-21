@@ -1,5 +1,6 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import { AdminShell } from '../components/admin/AdminShell'
+import { RouteTransition } from '../components/route-transition'
 import { fetchAdminSession } from '../server/functions/admin'
 
 export const Route = createFileRoute('/admin')({
@@ -15,7 +16,9 @@ export const Route = createFileRoute('/admin')({
 function AdminLayout() {
   return (
     <AdminShell>
-      <Outlet />
+      <RouteTransition>
+        <Outlet />
+      </RouteTransition>
     </AdminShell>
   )
 }
