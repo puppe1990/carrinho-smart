@@ -15,6 +15,7 @@ export interface Receipt {
   store: { id: string; name: string; city: string }
   purchasedAt: string
   totalCents: number
+  monthlyBudgetCents?: number
   items: ReceiptItem[]
 }
 
@@ -29,6 +30,7 @@ export const IMPORTED_RECEIPTS: Receipt[] = [
     store: { id: 'store-atacadao-tatuape', name: 'Atacadão Tatuapé', city: 'São Paulo' },
     purchasedAt: '2026-09-21T17:36:52.000Z',
     totalCents: 20462,
+    monthlyBudgetCents: 80000,
     items: [
       {
         name: 'RF.FILE DE PEITO',
@@ -158,6 +160,9 @@ export function importReceipts(repo: Repository, db: Database): void {
     const user = db.prepare('SELECT id FROM "user" WHERE email = ?').get(receipt.email) as
       { id: string } | undefined
     if (!user) continue
+    if (receipt.monthlyBudgetCents && repo.preferences.get(user.id).monthlyBudgetCents === 0) {
+      repo.preferences.update(user.id, { monthlyBudgetCents: receipt.monthlyBudgetCents })
+    }
     if (repo.purchases.get(receipt.id)) continue
     if (!repo.stores.get(receipt.store.id)) {
       repo.stores.insert(receipt.store)

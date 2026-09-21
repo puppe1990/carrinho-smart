@@ -123,6 +123,16 @@ describe('schema', () => {
   })
 })
 
+describe('preferences repository', () => {
+  it('persiste e lê a meta mensal', () => {
+    expect(repo.preferences.get(USER).monthlyBudgetCents).toBe(0)
+    repo.preferences.update(USER, { monthlyBudgetCents: 80000 })
+    expect(repo.preferences.get(USER).monthlyBudgetCents).toBe(80000)
+    repo.preferences.update(USER, { monthlyBudgetCents: -50 })
+    expect(repo.preferences.get(USER).monthlyBudgetCents).toBe(0)
+  })
+})
+
 describe('receipt imports', () => {
   it('importa a compra para o usuário do e-mail informado, uma única vez', () => {
     db.prepare('INSERT INTO "user" (id, name, email) VALUES (?, ?, ?)').run(

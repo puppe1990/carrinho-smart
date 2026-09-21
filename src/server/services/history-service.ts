@@ -66,15 +66,24 @@ export function getHistory(
   overview: MonthlyOverview
 } {
   const purchases = repo.purchases.listForMonth(userId, year, month)
-  const budgetCents = purchases.reduce((sum, purchase) => sum + purchase.budgetCents, 0)
   return {
     year,
     month,
     label: monthLabel(year, month),
     purchases,
     stores: repo.stores.list(),
-    overview: purchaseMonthlyOverview(purchases, budgetCents),
+    overview: purchaseMonthlyOverview(purchases, resolveMonthlyBudget(repo, userId, purchases)),
   }
+}
+
+/**
+ * Meta do mês: usa o orçamento mensal definido pelo usuário; se não houver,
+ * cai para a soma das metas de cada compra (comportamento anterior).
+ */
+function resolveMonthlyBudget(repo: Repository, userId: string, purchases: Purchase[]): number {
+  const monthly = repo.preferences.get(userId).monthlyBudgetCents
+  if (monthly > 0) return monthly
+  return purchases.reduce((sum, purchase) => sum + purchase.budgetCents, 0)
 }
 
 function enrichDistribution(
@@ -120,6 +129,7 @@ export interface MonthSummary {
   items: PurchaseItem[]
   distribution: EnrichedCategorySlice[]
   overview: MonthlyOverview
+  monthlyBudgetCents: number
   stores: ReturnType<Repository['stores']['list']>
 }
 
@@ -131,7 +141,6 @@ export function getMonthSummary(
 ): MonthSummary {
   const purchases = repo.purchases.listForMonth(userId, year, month)
   const items = purchases.flatMap((purchase) => repo.purchases.getItems(purchase.id))
-  const budgetCents = purchases.reduce((sum, purchase) => sum + purchase.budgetCents, 0)
 
   return {
     year,
@@ -140,7 +149,8 @@ export function getMonthSummary(
     purchases,
     items,
     distribution: enrichDistribution(repo, items),
-    overview: purchaseMonthlyOverview(purchases, budgetCents),
+    overview: purchaseMonthlyOverview(purchases, resolveMonthlyBudget(repo, userId, purchases)),
+    monthlyBudgetCents: repo.preferences.get(userId).monthlyBudgetCents,
     stores: repo.stores.list(),
   }
 }

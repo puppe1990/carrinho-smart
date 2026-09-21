@@ -946,29 +946,41 @@ export function createRepository(db: Database) {
   }
 
   const preferences = {
-    get(userId: string): { demoDataSeeded: boolean; welcomeShown: boolean } {
+    get(userId: string): {
+      demoDataSeeded: boolean
+      welcomeShown: boolean
+      monthlyBudgetCents: number
+    } {
       const row = db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(userId) as any
       return {
         demoDataSeeded: Boolean(row?.demo_data_seeded ?? 0),
         welcomeShown: Boolean(row?.welcome_shown ?? 0),
+        monthlyBudgetCents: row?.monthly_budget_cents ?? 0,
       }
     },
     update(
       userId: string,
-      changes: { demoDataSeeded?: boolean; welcomeShown?: boolean },
-    ): { demoDataSeeded: boolean; welcomeShown: boolean } {
+      changes: { demoDataSeeded?: boolean; welcomeShown?: boolean; monthlyBudgetCents?: number },
+    ): { demoDataSeeded: boolean; welcomeShown: boolean; monthlyBudgetCents: number } {
       const current = preferences.get(userId)
       const next = {
         demoDataSeeded: changes.demoDataSeeded ?? current.demoDataSeeded,
         welcomeShown: changes.welcomeShown ?? current.welcomeShown,
+        monthlyBudgetCents: changes.monthlyBudgetCents ?? current.monthlyBudgetCents,
       }
       db.prepare(
-        `INSERT INTO user_preferences (user_id, demo_data_seeded, welcome_shown)
-         VALUES (?, ?, ?)
+        `INSERT INTO user_preferences (user_id, demo_data_seeded, welcome_shown, monthly_budget_cents)
+         VALUES (?, ?, ?, ?)
          ON CONFLICT(user_id) DO UPDATE SET
            demo_data_seeded = excluded.demo_data_seeded,
-           welcome_shown = excluded.welcome_shown`,
-      ).run(userId, next.demoDataSeeded ? 1 : 0, next.welcomeShown ? 1 : 0)
+           welcome_shown = excluded.welcome_shown,
+           monthly_budget_cents = excluded.monthly_budget_cents`,
+      ).run(
+        userId,
+        next.demoDataSeeded ? 1 : 0,
+        next.welcomeShown ? 1 : 0,
+        Math.max(0, Math.round(next.monthlyBudgetCents)),
+      )
       return next
     },
   }

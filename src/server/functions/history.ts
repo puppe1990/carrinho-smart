@@ -36,3 +36,11 @@ export const fetchPurchaseSummary = createServerFn({ method: 'GET' })
     const { repo, user } = await requireSession()
     return getPurchaseSummary(repo, user.id, data.purchaseId)
   })
+
+export const changeMonthlyBudget = createServerFn({ method: 'POST' })
+  .validator((data: { budgetCents: number }) => data)
+  .handler(async ({ data }) => {
+    const { repo, user } = await requireSession()
+    const budgetCents = Math.max(0, Math.round(Number(data.budgetCents) || 0))
+    return repo.preferences.update(user.id, { monthlyBudgetCents: budgetCents })
+  })
