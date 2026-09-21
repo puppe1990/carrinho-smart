@@ -1,5 +1,4 @@
 import { faker } from '@faker-js/faker'
-import { buildEan13 } from '../../domain/barcode'
 import { CATALOG_REAL_PRODUCTS } from './catalog-barcodes'
 import type { Database } from './client'
 import { createRepository, type Repository } from './repositories'
@@ -89,15 +88,6 @@ const AISLES: Record<string, string> = {
   padaria: 'Padaria',
 }
 
-const BRANDS: Record<string, string[]> = {
-  mercearia: ['Pilão', 'Camil', 'Tio João', 'Renata', 'Gallo', 'União'],
-  laticinios: ['Nestlé', 'Itambé', 'Catupiry', 'President', 'Danone'],
-  hortifruti: ['Sítio do Vale', 'Seleção da Fazenda', 'Orgânicos do Campo'],
-  limpeza: ['Ypê', 'OMO', 'Veja', 'Bombril'],
-  higiene: ['Neve', 'Colgate', 'Dove', 'Pantene', 'Nivea'],
-  padaria: ['Seven Boys', 'Vivenda', 'Padaria do Bairro'],
-}
-
 interface ProductTemplate {
   name: string
   categoryId: string
@@ -159,10 +149,6 @@ const STORES = [
   { id: 'store-extra', name: 'Extra - Pinheiros', city: 'São Paulo' },
 ]
 
-function barcodeFor(index: number): string {
-  return buildEan13(`7891000000${String(index).padStart(2, '0')}`)
-}
-
 function hashSeed(value: string): number {
   let hash = 0
   for (let index = 0; index < value.length; index += 1) {
@@ -185,12 +171,12 @@ export function seedCatalog(repo: Repository, options: { seed?: number } = {}): 
   PRODUCT_TEMPLATES.forEach((template, index) => {
     const id = `prod-${index + 1}`
     const real = CATALOG_REAL_PRODUCTS[id]
-    const brandOptions = BRANDS[template.categoryId] ?? ['Genérico']
+    if (!real) return
     repo.products.insert({
       id,
-      barcode: real?.barcode ?? barcodeFor(index + 1),
+      barcode: real.barcode,
       name: template.name,
-      brand: real?.brand ?? faker.helpers.arrayElement(brandOptions),
+      brand: real.brand,
       categoryId: template.categoryId,
       unit: template.unit,
       priceCents: randomVariance(template.basePriceCents),
@@ -371,4 +357,4 @@ export function seedDatabase(db: Database, options: SeedOptions = {}): SeedResul
   }
 }
 
-export { STORES, CATEGORIES, PRODUCT_TEMPLATES, barcodeFor }
+export { STORES, CATEGORIES, PRODUCT_TEMPLATES }

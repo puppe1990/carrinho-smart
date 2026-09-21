@@ -1,4 +1,4 @@
-import { CATALOG_REAL_PRODUCTS } from './catalog-barcodes'
+import { CATALOG_REAL_PRODUCTS, CATALOG_SYNTHETIC_PRODUCT_IDS } from './catalog-barcodes'
 
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -216,9 +216,27 @@ function upgradeCatalogBarcodes(db: MigratableDatabase): void {
   }
 }
 
+/**
+ * Remove do catálogo os produtos antigos sem EAN-13 real, apenas se ainda
+ * estiverem com o código sintético (preserva itens editados manualmente).
+ */
+function removeSyntheticCatalogProducts(db: MigratableDatabase): void {
+  for (const id of CATALOG_SYNTHETIC_PRODUCT_IDS) {
+    const present = db
+      .prepare("SELECT id FROM products WHERE id = ? AND barcode LIKE '7891000000%'")
+      .all(id)
+    if (present.length === 0) continue
+    db.prepare('UPDATE list_items SET product_id = NULL WHERE product_id = ?').run(id)
+    db.prepare('UPDATE cart_items SET product_id = NULL WHERE product_id = ?').run(id)
+    db.prepare('UPDATE purchase_items SET product_id = NULL WHERE product_id = ?').run(id)
+    db.prepare('DELETE FROM products WHERE id = ?').run(id)
+  }
+}
+
 export function migrate(db: MigratableDatabase): void {
   db.exec(SCHEMA_SQL)
   ensureColumns(db)
   fixLegacyBarcodes(db)
   upgradeCatalogBarcodes(db)
+  removeSyntheticCatalogProducts(db)
 }

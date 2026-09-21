@@ -16,7 +16,7 @@ describe('seedDatabase', () => {
     const result = seedDatabase(db, { seed: 42 })
     expect(result.categoryCount).toBeGreaterThanOrEqual(5)
     expect(result.storeCount).toBeGreaterThanOrEqual(3)
-    expect(result.productCount).toBeGreaterThanOrEqual(20)
+    expect(result.productCount).toBeGreaterThanOrEqual(15)
     expect(repo.products.list().length).toBe(result.productCount)
     expect(result.userId).toBe(DEMO_USER_ID)
   })
