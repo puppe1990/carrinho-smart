@@ -1,4 +1,5 @@
 import { useEffect, useId, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from '../Icon'
 
 export const adminInputClass =
@@ -221,8 +222,8 @@ export function AdminModal({
 
   const titleId = useId()
 
-  if (!open) return null
-  return (
+  if (!open || typeof document === 'undefined') return null
+  return createPortal(
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center p-4"
       role="dialog"
@@ -243,7 +244,8 @@ export function AdminModal({
         <div className="mt-4 flex flex-col gap-4">{children}</div>
         {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

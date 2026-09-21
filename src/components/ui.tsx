@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from '@tanstack/react-router'
 import { useAuthUser } from '../auth/session-context'
 import { authClient } from '../lib/auth-client'
@@ -298,8 +299,8 @@ export function Sheet({
   title: string
   children: ReactNode
 }) {
-  if (!open) return null
-  return (
+  if (!open || typeof document === 'undefined') return null
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end justify-center" role="dialog" aria-modal>
       <button
         type="button"
@@ -312,7 +313,8 @@ export function Sheet({
         <h2 className="mb-3 text-base font-bold text-on-surface">{title}</h2>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
