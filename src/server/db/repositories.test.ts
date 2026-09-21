@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { createDatabase, type Database } from './client'
 import { createRepository, type Repository } from './repositories'
+import { migrate } from './schema'
 
 const USER = 'user-1'
 const OTHER_USER = 'user-2'
@@ -64,6 +65,22 @@ describe('schema', () => {
       const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
       expect(columns.map((column) => column.name)).toContain('user_id')
     }
+  })
+
+  it('upgrades synthetic catalog barcodes to real EANs idempotently', () => {
+    repo.products.insert({
+      id: 'prod-1',
+      barcode: '7891000000015',
+      name: 'Café',
+      categoryId: 'mercearia',
+    })
+    migrate(db)
+    const upgraded = repo.products.get('prod-1')
+    expect(upgraded?.barcode).toBe('7896089011982')
+    expect(upgraded?.brand).toBe('Pilão')
+
+    migrate(db)
+    expect(repo.products.get('prod-1')?.barcode).toBe('7896089011982')
   })
 })
 

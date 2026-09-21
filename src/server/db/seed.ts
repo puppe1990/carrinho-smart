@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker'
 import { buildEan13 } from '../../domain/barcode'
+import { CATALOG_REAL_PRODUCTS } from './catalog-barcodes'
 import type { Database } from './client'
 import { createRepository, type Repository } from './repositories'
 
@@ -182,12 +183,14 @@ export function seedCatalog(repo: Repository, options: { seed?: number } = {}): 
   for (const store of STORES) repo.stores.insert(store)
 
   PRODUCT_TEMPLATES.forEach((template, index) => {
+    const id = `prod-${index + 1}`
+    const real = CATALOG_REAL_PRODUCTS[id]
     const brandOptions = BRANDS[template.categoryId] ?? ['Genérico']
     repo.products.insert({
-      id: `prod-${index + 1}`,
-      barcode: barcodeFor(index + 1),
+      id,
+      barcode: real?.barcode ?? barcodeFor(index + 1),
       name: template.name,
-      brand: faker.helpers.arrayElement(brandOptions),
+      brand: real?.brand ?? faker.helpers.arrayElement(brandOptions),
       categoryId: template.categoryId,
       unit: template.unit,
       priceCents: randomVariance(template.basePriceCents),
