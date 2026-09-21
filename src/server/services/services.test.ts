@@ -13,7 +13,12 @@ import {
 } from './cart-service'
 import { lookupBarcode, searchProducts } from './scanner-service'
 import { addQuickItem, getShoppingListOverview, scanListItem } from './list-service'
-import { getHistory, getPurchaseSummary, listAvailableMonths } from './history-service'
+import {
+  getHistory,
+  getMonthSummary,
+  getPurchaseSummary,
+  listAvailableMonths,
+} from './history-service'
 
 let db: Database
 let repo: Repository
@@ -191,6 +196,15 @@ describe('history service', () => {
     expect(history.overview.count).toBe(history.purchases.length)
     expect(history.overview.totalCents).toBeGreaterThan(0)
     expect(listAvailableMonths(repo, OTHER_USER)).toHaveLength(0)
+  })
+
+  it('uses the monthly budget for the overview when set', () => {
+    repo.preferences.update(USER, { monthlyBudgetCents: 100000 })
+    const months = listAvailableMonths(repo, USER)
+    const { year, month } = months[0]
+    const summary = getMonthSummary(repo, USER, year, month)
+    expect(summary.monthlyBudgetCents).toBe(100000)
+    expect(summary.overview.budgetCents).toBe(100000)
   })
 
   it('builds a purchase summary with category distribution', () => {

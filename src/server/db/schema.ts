@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   user_id TEXT PRIMARY KEY,
   demo_data_seeded INTEGER NOT NULL DEFAULT 0,
   welcome_shown INTEGER NOT NULL DEFAULT 0,
+  monthly_budget_cents INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `
@@ -159,6 +160,14 @@ const USER_SCOPED_COLUMNS: Array<{ table: string; column: string; ddl: string }>
   { table: 'price_history', column: 'user_id', ddl: "user_id TEXT NOT NULL DEFAULT ''" },
 ]
 
+const PREFERENCE_COLUMNS: Array<{ table: string; column: string; ddl: string }> = [
+  {
+    table: 'user_preferences',
+    column: 'monthly_budget_cents',
+    ddl: 'monthly_budget_cents INTEGER NOT NULL DEFAULT 0',
+  },
+]
+
 function hasColumn(db: MigratableDatabase, table: string, column: string): boolean {
   return db
     .prepare(`PRAGMA table_info(${table})`)
@@ -167,7 +176,7 @@ function hasColumn(db: MigratableDatabase, table: string, column: string): boole
 }
 
 function ensureColumns(db: MigratableDatabase): void {
-  for (const { table, column, ddl } of USER_SCOPED_COLUMNS) {
+  for (const { table, column, ddl } of [...USER_SCOPED_COLUMNS, ...PREFERENCE_COLUMNS]) {
     if (!hasColumn(db, table, column)) {
       db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`)
     }

@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { useState } from 'react'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { Icon } from '../components/Icon'
-import { Badge, EmptyState, ProgressBar, ScreenHeader } from '../components/ui'
-import { formatBRL, formatPercent } from '../domain/money'
+import { Badge, EmptyState, ProgressBar, ScreenHeader, Sheet } from '../components/ui'
+import { formatBRL, formatPercent, parseBRL } from '../domain/money'
 import { fetchCartOverview } from '../server/functions/cart'
-import { fetchMonthSummary, fetchMonths } from '../server/functions/history'
+import { changeMonthlyBudget, fetchMonthSummary, fetchMonths } from '../server/functions/history'
 
 type MonthRef = { year: number; month: number; key: string; label: string }
 
@@ -36,10 +37,31 @@ export const Route = createFileRoute('/resumo')({
 function SummaryPage() {
   const { months, summary, target, storeName } = Route.useLoaderData()
   const navigate = Route.useNavigate()
+  const router = useRouter()
+  const [metaOpen, setMetaOpen] = useState(false)
+  const [metaValue, setMetaValue] = useState('')
+  const [savingMeta, setSavingMeta] = useState(false)
 
   const index = target ? months.findIndex((month) => month.key === target.key) : -1
   const older = index >= 0 ? months[index + 1] : undefined
   const newer = index > 0 ? months[index - 1] : undefined
+
+  function openMetaEditor() {
+    if (!summary) return
+    setMetaValue((summary.monthlyBudgetCents / 100).toFixed(2).replace('.', ','))
+    setMetaOpen(true)
+  }
+
+  async function saveMeta() {
+    setSavingMeta(true)
+    try {
+      await changeMonthlyBudget({ data: { budgetCents: parseBRL(metaValue) } })
+      setMetaOpen(false)
+      await router.invalidate()
+    } finally {
+      setSavingMeta(false)
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col pb-28">
@@ -118,13 +140,22 @@ function SummaryPage() {
 
                 <div className="rounded-lg bg-surface-container-low p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-on-surface">
-                      Meta {formatBRL(summary.overview.budgetCents)}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={openMetaEditor}
+                      className="flex items-center gap-1.5 text-sm font-bold text-on-surface"
+                    >
+                      {summary.monthlyBudgetCents > 0
+                        ? `Meta ${formatBRL(summary.overview.budgetCents)}`
+                        : 'Definir meta do mês'}
+                      <Icon name="edit" className="text-[14px] text-primary" />
+                    </button>
                     <span className="text-xs font-bold text-primary">
-                      {summary.overview.withinBudget
-                        ? `${formatBRL(summary.overview.remainingCents)} abaixo`
-                        : `${formatPercent(summary.overview.usedPercent)} usado`}
+                      {summary.monthlyBudgetCents <= 0
+                        ? 'sem meta'
+                        : summary.overview.withinBudget
+                          ? `${formatBRL(summary.overview.remainingCents)} abaixo`
+                          : `${formatPercent(summary.overview.usedPercent)} usado`}
                     </span>
                   </div>
                   <div className="mt-2">
@@ -273,6 +304,32 @@ function SummaryPage() {
           </>
         )}
       </main>
+
+      <Sheet open={metaOpen} onClose={() => setMetaOpen(false)} title="Meta do mês">
+        <p className="mb-3 text-xs text-on-surface-variant">
+          Defina o orçamento mensal. Todas as compras do mês contam contra esta meta.
+        </p>
+        <div className="mb-3 flex items-baseline gap-2 rounded-xl bg-surface-container-low p-3">
+          <span className="text-sm font-bold text-on-surface">R$</span>
+          <input
+            autoFocus
+            inputMode="decimal"
+            value={metaValue}
+            onChange={(event) => setMetaValue(event.target.value)}
+            placeholder="0,00"
+            className="tnum w-full bg-transparent text-2xl font-extrabold text-on-surface outline-none"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={savingMeta}
+          onClick={() => void saveMeta()}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-container text-sm font-bold text-on-primary disabled:opacity-60"
+        >
+          <Icon name="save" className="text-[20px]" />
+          {savingMeta ? 'Salvando...' : 'Salvar meta'}
+        </button>
+      </Sheet>
     </div>
   )
 }
