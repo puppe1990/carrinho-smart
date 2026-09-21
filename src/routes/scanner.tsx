@@ -272,8 +272,17 @@ function ScannerPage() {
           <div className="mb-3 flex items-start gap-2 rounded-xl bg-secondary-fixed/50 p-3 text-on-secondary-container">
             <Icon name="info" className="text-[18px]" />
             <span className="text-[11px] font-medium">
-              Este navegador não faz leitura automática de código de barras. Use "Digitar o código"
+              Não foi possível ativar a leitura automática neste navegador. Use "Digitar o código"
               para informar o EAN manualmente.
+            </span>
+          </div>
+        )}
+
+        {camera.usingFallback && (
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-surface-container p-3 text-on-surface-variant">
+            <Icon name="auto_awesome" className="text-[18px] text-primary" />
+            <span className="text-[11px] font-medium">
+              Leitura automática ativa em modo de compatibilidade. Aponte a câmera para o código.
             </span>
           </div>
         )}
