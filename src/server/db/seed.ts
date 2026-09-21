@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker'
-import { CATALOG_REAL_PRODUCTS } from './catalog-barcodes'
+import { CATALOG_EXTRA_PRODUCTS, CATALOG_REAL_PRODUCTS } from './catalog-barcodes'
 import type { Database } from './client'
 import { createRepository, type Repository } from './repositories'
 
@@ -184,6 +184,20 @@ export function seedCatalog(repo: Repository, options: { seed?: number } = {}): 
       imageUrl: null,
     })
   })
+
+  for (const product of CATALOG_EXTRA_PRODUCTS) {
+    repo.products.insert({
+      id: product.id,
+      barcode: product.barcode,
+      name: product.name,
+      brand: product.brand,
+      categoryId: product.categoryId,
+      unit: product.unit,
+      priceCents: product.priceCents,
+      aisle: product.aisle,
+      imageUrl: null,
+    })
+  }
 }
 
 export function seedUserData(
