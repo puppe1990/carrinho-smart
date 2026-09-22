@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Icon } from '../components/Icon'
 import { Badge, EmptyState, ProgressBar } from '../components/ui'
 import { formatBRL, formatPercent, formatQuantity } from '../domain/money'
+import { downloadReceiptPng, receiptFilename } from '../lib/receipt-image'
 import { fetchPurchaseSummary } from '../server/functions/history'
 
 const COLOR_CLASS: Record<string, string> = {
@@ -18,6 +20,8 @@ export const Route = createFileRoute('/compra/$purchaseId')({
 
 function PurchaseSummaryPage() {
   const summary = Route.useLoaderData()
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   if (!summary) {
     return (
@@ -41,6 +45,33 @@ function PurchaseSummaryPage() {
 
   const { purchase, items, distribution, budget } = summary
   const saved = budget.limitCents - purchase.totalCents
+
+  const imageData = {
+    purchaseId: purchase.id,
+    storeName: purchase.storeName,
+    purchasedAt: purchase.purchasedAt,
+    items: items.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      unitPriceCents: item.unitPriceCents,
+      totalCents: item.totalCents,
+      wasPromo: item.wasPromo,
+    })),
+    totalCents: purchase.totalCents,
+    savingsCents: purchase.savingsCents,
+  }
+
+  async function handleDownload() {
+    setDownloading(true)
+    setDownloadError(null)
+    try {
+      await downloadReceiptPng(imageData, receiptFilename(imageData))
+    } catch {
+      setDownloadError('Não foi possível gerar a imagem. Tente novamente.')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col gap-4 px-4 pb-12 pt-safe">
@@ -220,13 +251,25 @@ function PurchaseSummaryPage() {
         </div>
       </section>
 
+      {downloadError && (
+        <div className="flex items-start gap-2 rounded-xl bg-error-container p-3 text-on-error-container">
+          <Icon name="error" className="text-[18px]" />
+          <span className="text-xs font-medium">{downloadError}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          className="flex h-12 items-center justify-center gap-2 rounded-full bg-surface-container-high text-sm font-bold text-on-surface"
+          disabled={downloading}
+          onClick={() => void handleDownload()}
+          className="flex h-12 items-center justify-center gap-2 rounded-full bg-surface-container-high text-sm font-bold text-on-surface disabled:opacity-60"
         >
-          <Icon name="share" className="text-[20px] text-primary" />
-          Exportar recibo
+          <Icon
+            name={downloading ? 'progress_activity' : 'download'}
+            className={`text-[20px] text-primary ${downloading ? 'animate-spin' : ''}`}
+          />
+          {downloading ? 'Gerando...' : 'Baixar PNG'}
         </button>
         <Link
           to="/"
