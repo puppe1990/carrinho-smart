@@ -1,22 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { Icon } from '../components/Icon'
+import {
+  MissingProductActions,
+  RegisterMissingProductForm,
+  type RegisterMissingProductInput,
+} from '../components/RegisterMissingProduct'
 import { SegmentedBudgetBar, Sheet, SubHeader } from '../components/ui'
 import { budgetGauge } from '../domain/budget'
 import { classifyBarcode, isValidEan13, normalizeBarcode } from '../domain/barcode'
 import { formatBRL, formatPercent, parseBRL } from '../domain/money'
 import { useBarcodeCamera } from '../hooks/use-barcode-camera'
+import {
+  createAdminProduct,
+  fetchAdminCategories,
+  fetchAdminSession,
+} from '../server/functions/admin'
 import { fetchCartOverview } from '../server/functions/cart'
 import { fetchMonthBudget } from '../server/functions/history'
 import { lookupProduct, scanProduct } from '../server/functions/scanner'
 
 export const Route = createFileRoute('/scanner')({
   loader: async () => {
-    const [overview, monthBudget] = await Promise.all([
+    const [overview, monthBudget, adminSession] = await Promise.all([
       fetchCartOverview({ data: {} }),
       fetchMonthBudget(),
+      fetchAdminSession(),
     ])
-    return { overview, monthBudget }
+    const categories = adminSession.isAdmin ? await fetchAdminCategories() : []
+    return { overview, monthBudget, isAdmin: adminSession.isAdmin, categories }
   },
   component: ScannerPage,
 })
@@ -24,7 +36,7 @@ export const Route = createFileRoute('/scanner')({
 type LookupResult = Awaited<ReturnType<typeof lookupProduct>>
 
 function ScannerPage() {
-  const { overview, monthBudget } = Route.useLoaderData()
+  const { overview, monthBudget, isAdmin, categories } = Route.useLoaderData()
   const router = useRouter()
 
   const [torchOn, setTorchOn] = useState(false)
@@ -33,7 +45,11 @@ function ScannerPage() {
   const [lastCode, setLastCode] = useState<string | null>(null)
   const [lookup, setLookup] = useState<LookupResult>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
+  const [productMissing, setProductMissing] = useState(false)
   const [searching, setSearching] = useState(false)
+  const [registerOpen, setRegisterOpen] = useState(false)
+  const [registerError, setRegisterError] = useState<string | null>(null)
+  const [registering, setRegistering] = useState(false)
 
   const [price, setPrice] = useState('0.00')
   const [quantity, setQuantity] = useState(1)
@@ -57,6 +73,7 @@ function ScannerPage() {
     inFlightRef.current = true
     setLastCode(code)
     setLookupError(null)
+    setProductMissing(false)
     setSearching(true)
     try {
       const result = await lookupProduct({
@@ -68,6 +85,7 @@ function ScannerPage() {
         setQuantity(1)
         setPromo(false)
       } else {
+        setProductMissing(true)
         setLookupError(`Nenhum produto cadastrado para o código ${code}.`)
       }
     } catch {
@@ -107,6 +125,36 @@ function ScannerPage() {
     }
     return labels[format] ?? format
   }, [lastCode])
+
+  async function handleRegister(input: RegisterMissingProductInput) {
+    setRegistering(true)
+    setRegisterError(null)
+    try {
+      const result = await createAdminProduct({
+        data: {
+          barcode: input.barcode,
+          name: input.name,
+          brand: input.brand,
+          categoryId: input.categoryId,
+          unit: input.unit,
+          priceCents: input.priceCents,
+          aisle: input.aisle,
+        },
+      })
+      if (!result.ok) {
+        setRegisterError(result.error)
+        return
+      }
+      setRegisterOpen(false)
+      setPrice((input.priceCents / 100).toFixed(2))
+      inFlightRef.current = false
+      await handleDetect(input.barcode)
+    } catch {
+      setRegisterError('Não foi possível cadastrar o produto. Tente novamente.')
+    } finally {
+      setRegistering(false)
+    }
+  }
 
   async function handleAdd() {
     if (!product) return
@@ -296,19 +344,15 @@ function ScannerPage() {
         )}
 
         {lookupError && (
-          <div className="mb-3 flex items-start gap-2 rounded-xl bg-secondary-fixed/50 p-3 text-on-secondary-container">
-            <Icon name="info" className="text-[18px]" />
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium">{lookupError}</span>
-              <button
-                type="button"
-                onClick={() => setManualOpen(true)}
-                className="self-start text-[11px] font-bold underline"
-              >
-                Corrigir código
-              </button>
-            </div>
-          </div>
+          <MissingProductActions
+            message={lookupError}
+            isAdmin={isAdmin && productMissing}
+            onCorrectCode={() => setManualOpen(true)}
+            onRegister={() => {
+              setRegisterError(null)
+              setRegisterOpen(true)
+            }}
+          />
         )}
 
         {product ? (
@@ -472,6 +516,32 @@ function ScannerPage() {
           {saved ? 'Item adicionado!' : `Adicionar ao carrinho (+ ${formatBRL(subtotalCents)})`}
         </button>
       </div>
+
+      <Sheet
+        open={registerOpen}
+        onClose={() => {
+          if (registering) return
+          setRegisterOpen(false)
+          setRegisterError(null)
+        }}
+        title="Cadastrar produto"
+      >
+        {lastCode ? (
+          <RegisterMissingProductForm
+            key={lastCode}
+            barcode={lastCode}
+            categories={categories}
+            initialPrice={price}
+            busy={registering}
+            error={registerError}
+            onSubmit={handleRegister}
+          />
+        ) : (
+          <p className="text-xs text-on-surface-variant">
+            Leia ou digite um código de barras antes de cadastrar o produto.
+          </p>
+        )}
+      </Sheet>
 
       <Sheet
         open={manualOpen}
